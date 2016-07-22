@@ -29,7 +29,7 @@ exports.loginByWechat = function(req,res){
 					//check if the user exists
 					var userInfo = arguments[2];
 					userModel
-					.findOne({openID:openId})
+					.findOne({unionID:userInfo.unionID})
 					.exec(function(err,result){
 						stateMachine(err,3,result,userInfo);
 					})
@@ -47,6 +47,7 @@ exports.loginByWechat = function(req,res){
 						newUser.privilege = userInfo.privilege;
 						newUser.createdDate = new Date();
 						newUser.lastLoginDate = new Date();
+						newUser.unionID = userInfo.unionID;
 						//to do
 
 						newUser
@@ -76,10 +77,10 @@ exports.loginByWechat = function(req,res){
 };
 
 exports.getUserInfo = function(req,res){
-	var openID = req.body.openID;
+	var userId = req.body.userId;
 
 	userModel
-	.findOne({$in:openID}})
+	.findOne(userId)
 	.exec(function(err,result){
 		if (err) {
 			console.log('error',err);
