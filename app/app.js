@@ -9,13 +9,15 @@ var q = require('q');
 
 var apiRouter = require('./routes/api-router.js');
 
-// var mongoDBUrl = "mongodb://120.26.101.86:27017/universalids";
-// mongoose.connect(mongoDBUrl, function(err){
-//   if (err) {
-//     console.log("mongo db connect fail!" + err);
-//   };
-// });
-// mongoose.Promise = q.Promise;
+var mongoDBUrl = "mongodb://127.0.0.1:27017/universalids";
+mongoose.connect(mongoDBUrl, function(err){
+  if (err) {
+    console.log("mongo db connect fail!" + err);
+  }else{
+    console.log("mongo db connect success!");
+  }
+});
+mongoose.Promise = q.Promise;
 
 var app = express();
 
@@ -63,6 +65,5 @@ app.use(function(err, req, res, next) {
     error: {}
   });
 });
-
 
 module.exports = app;

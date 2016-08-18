@@ -1,7 +1,7 @@
 var mongoose = require('mongoose');
 var Schema = mongoose.Schema;
 
-var userSchema = new Schema({
+var userSchema = Schema({
 	username:String,
 
 	password:{
@@ -40,4 +40,6 @@ var userSchema = new Schema({
 	lastLoginDate:Date
 });
 
-module.exports = mongoose.Model('User',userSchema);
+module.exports = mongoose.model('User',userSchema);
+
+
