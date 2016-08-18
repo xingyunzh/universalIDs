@@ -5,8 +5,10 @@ var userModel = require('../models/user.js');
 
 
 exports.loginByWechat = function(req,res){
-	console.log('req:',req);
-	var stateMachine = function(err,toState){
+
+	stateMachine(null,0);
+
+	function stateMachine(err,toState){
 		if (err) {
 			console.log('state:',toState);
 			console.log('error:',err);
@@ -52,8 +54,7 @@ exports.loginByWechat = function(req,res){
 						//to do
 
 						newUser
-						.save()
-						.exec(function(err,result){
+						.save(function(err,result){
 							stateMachine(err,4,result);
 						});
 					}else{
