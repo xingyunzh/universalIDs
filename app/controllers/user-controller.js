@@ -17,13 +17,13 @@ exports.loginByWechat = function(req,res){
 					var code = req.query.code;
 					wechat.getAccessToken(code,function(err,accessToken,openId){
 						stateMachine(err,1,accessToken,openId);
-					};
+					});
 				break;
 				case 1:
 					//get user info from wechat
 					wechat.getUserInfo(arguments[3],function(err,userInfo){
 						stateMachine(err,2,userInfo);
-					})
+					});
 				break;
 				case 2:
 					//check if the user exists
@@ -32,7 +32,7 @@ exports.loginByWechat = function(req,res){
 					.findOne({unionID:userInfo.unionID})
 					.exec(function(err,result){
 						stateMachine(err,3,result,userInfo);
-					})
+					});
 				break;
 				case 3:
 					var userInfo = arguments[3];
