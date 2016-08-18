@@ -6,4 +6,4 @@ var userAPI = require("./user-api");
 
 module.exports = router;
 
-router.use("/user", userAPI);
+router.use("/clduser", userAPI);
