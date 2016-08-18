@@ -5,6 +5,7 @@ var userModel = require('../models/user.js');
 
 
 exports.loginByWechat = function(req,res){
+	console.log('req:',req);
 	var stateMachine = function(err,toState){
 		if (err) {
 			console.log('state:',toState);
