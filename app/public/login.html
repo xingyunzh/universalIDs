@@ -8,17 +8,20 @@
 
 <div id="wechatCode"></div>
 <script>
-var universalAPI = "http://www.xingyunzh.com:5566/clduser/login/wechat";
+var universalAPI = "http://www.xingyunzh.com/clduser/login/wechat";
 
 var obj = new WxLogin({
   id:"wechatCode", 
   appid: "wx5ce7696222e79ca5", 
   scope: "snsapi_login", 
-  redirect_uri: encodeURIComponent(universalAPI),//"http%3A%2F%2Fwww.xingyunzh.com",
+  //redirect_uri: "http%3A%2F%2Fwww.xingyunzh.com",
+  redirect_uri: encodeURIComponent(universalAPI),
   state: "345",
   style: "",
   href: ""
 });
+
+console.log('1',obj);
 </script>
 </body>
 </html>
