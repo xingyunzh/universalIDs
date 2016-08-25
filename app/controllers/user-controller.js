@@ -40,7 +40,8 @@ exports.loginByWechat = function(req,res){
 					});
 				break;
 				case STATE_CHECK_USER_EXIST:
-
+					var userInfo = arguments[2];
+					
 					userWechatModel
 					.findOne({unionID:userInfo.unionID})
 					.populate('user')
