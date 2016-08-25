@@ -68,7 +68,7 @@ exports.loginByWechat = function(req,res){
 				break;
 				case STATE_CREATE_USER:
 					//if the user-wechat does not exist,create user
-					var userInfo = arguments[2];
+					var userInfo = arguments[3];
 
 					var newUser = new userModel();
 					newUser.nickname = userInfo.nickname;
