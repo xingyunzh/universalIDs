@@ -103,7 +103,7 @@ exports.loginByWechat = function(req,res){
 				case STATE_BUILD_RESPONSE:
 					var userWechat = arguments[2];
 					
-					User
+					userModel
 					.findOne(userWechat._id)
 					.populate('user')
 					.exec(function(err,result){
