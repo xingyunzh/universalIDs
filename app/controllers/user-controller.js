@@ -2,6 +2,7 @@ var wechat = require('../util/wechat-auth.js');
 var util = require('../util/shared/util.js');
 
 var userModel = require('../models/user.js');
+var userWechatModel = require('../models/user-Wechat.js');
 
 
 exports.loginByWechat = function(req,res){
@@ -9,66 +10,101 @@ exports.loginByWechat = function(req,res){
 	stateMachine(null,0);
 
 	function stateMachine(err,toState){
+		//States declaration
+		const STATE_GET_TOKEN = 0;
+		const STATE_GET_USER_INFO = 1;
+		const STATE_CHECK_USER_EXIST = 2;
+		const STATE_UPDATE_USER_INFO = 3;
+		const STATE_CREATE_USER = 4;
+		const STATE_CREATE_USER_WECHAT = 5;
+		const STATE_BUILD_RESPONSE = 6;
+		const STATE_SEND_RESPONSE = 7;
+
 		if (err) {
 			console.log('state:',toState);
 			console.log('error:',err);
 			res.send(util.wrapBody('Internal Error','E'));
 		}else{
 			switch(toState){
-				case 0: 
+				case STATE_GET_TOKEN: 
 					//get accessToken&openID by code
 					var code = req.query.code;
 					wechat.getAccessToken(code,function(err,accessToken,openId){
-						stateMachine(err,1,accessToken,openId);
+						stateMachine(err,STATE_GET_USER_INFO,accessToken,openId);
 					});
 				break;
-				case 1:
+				case STATE_GET_USER_INFO:
 					//get user info from wechat
 					wechat.getUserInfo(arguments[3],function(err,userInfo){
-						stateMachine(err,2,userInfo);
+						stateMachine(err,STATE_CHECK_USER_EXIST,userInfo);
 					});
 				break;
-				case 2:
-					//check if the user exists
-					var userInfo = arguments[2];
-					userModel
-					.findOne({unionID:userInfo.unionID})
-					.exec(function(err,result){
-						stateMachine(err,3,result,userInfo);
-					});
-				break;
-				case 3:
-					var userInfo = arguments[3];
-					if (arguments[2] == null) {
-						//if the user does not exist
-						var newUser = new userModel();
-						newUser.nickname = userInfo.nickname;
-						newUser.gender = userInfo.sex;
-						newUser.province = userInfo.province;
-						newUser.city = userInfo.city;
-						newUser.country = userInfo.country;
-						newUser.privilege = userInfo.privilege;
-						newUser.createdDate = new Date();
-						newUser.lastLoginDate = new Date();
-						newUser.unionID = userInfo.unionID;
-						//to do
+				case STATE_CHECK_USER_EXIST:
 
-						newUser
-						.save(function(err,result){
-							stateMachine(err,4,result);
-						});
-					}else{
-						//if the user exist
-						userModel
-						.update(userInfo)
-						.exec(function(err,result){
-							stateMachine(err,4,result);
-						});
-					};
+					userWechatModel
+					.findOne({unionID:userInfo.unionID})
+					.populate('user')
+					.exec(function(err,result){
+						stateMachine(err,STATE_UPDATE_USER_INFO,result,userInfo);
+					});
 				break;
-				case 4:
-					//send response
+				case STATE_UPDATE_USER_INFO:
+					//if the user-wechat exist
+					var userInfo = arguments[2];
+
+					userWechatModel
+					.update(userInfo)
+					.exec(function(err,result){
+						stateMachine(err,STATE_BUILD_RESPONSE,result);
+					});
+				break;
+				case STATE_CREATE_USER:
+					//if the user-wechat does not exist,create user
+					var userInfo = arguments[2];
+
+					var newUser = new userModel();
+					newUser.nickname = userInfo.nickname;
+					//newUser.createdDate = new Date();
+					newUser.lastLoginDate = new Date();
+
+					newUser
+					.save(function(err,result){
+						stateMachine(err,STATE_CREATE_USER_WECHAT,result,userInfo);
+					});
+				break;
+				case STATE_CREATE_USER_WECHAT:
+					var user = arguments[2];
+					var userInfo = arguments[3];
+
+					var newUserWechat = new userWechatModel();
+					newUserWechat.user = user._id;
+					newUserWechat.nickname = userInfo.nickname;
+					newUserWechat.sex = userInfo.sex;
+					newUserWechat.province = userInfo.province;
+					newUserWechat.city = userInfo.city;
+					newUserWechat.country = userInfo.country;
+					newUserWechat.privilege = userInfo.privilege;
+					newUserWechat.unionID = userInfo.unionID;
+
+					newUserWechat
+					.save(function(err,result){
+						stateMachine(err,STATE_BUILD_RESPONSE,result);
+					});
+
+				break;
+				case STATE_BUILD_RESPONSE:
+					var userWechat = arguments[2];
+					
+					User
+					.findOne(userWechat._id)
+					.populate('user')
+					.exec(function(err,result){
+						stateMachine(err,STATE_SEND_RESPONSE,result);
+					});
+				break;
+				case STATE_SEND_RESPONSE:
 					var result = arguments[2];
+
 					res.send(util.wrapBody(result));
 				break;
 				default: res.send(util.wrapBody('Internal Error','E'));
