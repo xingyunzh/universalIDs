@@ -2,7 +2,7 @@ var wechat = require('../util/wechat-auth.js');
 var util = require('../util/shared/util.js');
 
 var userModel = require('../models/user.js');
-var userWechatModel = require('../models/user-Wechat.js');
+var userWechatModel = require('../models/user-wechat.js');
 
 
 exports.loginByWechat = function(req,res){
