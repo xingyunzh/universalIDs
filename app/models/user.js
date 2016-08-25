@@ -11,29 +11,32 @@ var userSchema = Schema({
 
 	nickname:String,
 
-	gender:Number,
+	// gender:Number,
 
-	province:String,
+	// province:String,
 
-	city:String,
+	// city:String,
 
-	country:String,
+	// country:String,
 
-	headImgUrl:String,
+	// headImgUrl:String,
 
-	privilege:[],
+	// privilege:[],
 
-	openID:{
-		type:Array,
-		index:true
-	},
+	// openID:{
+	// 	type:Array,
+	// 	index:true
+	// },
 
-	unionID:{
-		type:String,
-		index:true
-	},
+	// unionID:{
+	// 	type:String,
+	// 	index:true
+	// },
 	
-	createdDate:Date,
+	createdDate:{
+		type:Date,
+		'default': new Date()
+	},
 
 	email:String,
 

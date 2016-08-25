@@ -8,7 +8,7 @@ exports.getAccessToken = function(code,callback){
 			callback(err);
 		}else{
 
-			console.log('result',result);
+			//console.log('result',result);
 	  		var accessToken = result.data.access_token;
 	  		var openid = result.data.openid;
 	  		callback(null,accessToken,openid);
