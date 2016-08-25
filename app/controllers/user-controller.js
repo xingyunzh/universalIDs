@@ -27,7 +27,7 @@ exports.loginByWechat = function(req,res){
 		}else{
 			console.log('state',toState);
 			console.log('argument',arguments[2]);
-			
+
 			switch(toState){
 				case STATE_GET_TOKEN: 
 					//get accessToken&openID by code
@@ -49,7 +49,11 @@ exports.loginByWechat = function(req,res){
 					.findOne({unionID:userInfo.unionID})
 					.populate('user')
 					.exec(function(err,result){
-						stateMachine(err,STATE_UPDATE_USER_INFO,result,userInfo);
+						if(result == null){
+							stateMachine(err,STATE_CREATE_USER,result,userInfo);
+						}else{
+							stateMachine(err,STATE_UPDATE_USER_INFO,result,userInfo);
+						}
 					});
 				break;
 				case STATE_UPDATE_USER_INFO:
