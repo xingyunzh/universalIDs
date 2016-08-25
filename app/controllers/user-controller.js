@@ -25,6 +25,9 @@ exports.loginByWechat = function(req,res){
 			console.log('error:',err);
 			res.send(util.wrapBody('Internal Error','E'));
 		}else{
+			console.log('state',toState);
+			console.log('argument',arguments[2]);
+			
 			switch(toState){
 				case STATE_GET_TOKEN: 
 					//get accessToken&openID by code
@@ -41,7 +44,7 @@ exports.loginByWechat = function(req,res){
 				break;
 				case STATE_CHECK_USER_EXIST:
 					var userInfo = arguments[2];
-					
+
 					userWechatModel
 					.findOne({unionID:userInfo.unionID})
 					.populate('user')
