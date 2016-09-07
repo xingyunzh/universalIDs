@@ -1,35 +1,38 @@
 var wechat = require('../util/wechat-auth.js');
 var util = require('../util/shared/util.js');
 var crypto = require('crypto');
+var stringHelper = require('../util/shared/stringHelper.js');
+var tokenHelper = require('../util/shared/tokenHelper.js');
 
 var userModel = require('../models/user');
 var userWechatModel = require('../models/user-wechat');
 var fullProfile = require('../models/full-profile');
-
-var XINGYUNZH_UNIVERSAL_SECRET = "xingyunzh-universal-secret";
+var registrationModel = require('../models/registration');
 
 exports.loginByWechat = function(req,res){
 
-	stateMachine(null,1);
+	//States declaration
+	const STATE_GET_TOKEN = 1;
+	const STATE_GET_USER_INFO = 2;
+	const STATE_CHECK_USER_EXIST = 3;
+	const STATE_UPDATE_USER_INFO = 4;
+	const STATE_CREATE_USER = 5;
+	const STATE_CREATE_USER_WECHAT = 6;
+	const STATE_CREATE_TOKEN = 7;
+	const STATE_SEND_RESPONSE = 0;
+
+	var code = req.query.code;
+	var accessToken = null;
+	var openId = null;
+	var userInfo = null;
+	var latestUserWechat = null;
+	var jwToken = null;
+	var latestUser = null;
+
+	stateMachine(null,STATE_GET_TOKEN);
 
 	function stateMachine(err,toState){
-		//States declaration
-		const STATE_GET_TOKEN = 1;
-		const STATE_GET_USER_INFO = 2;
-		const STATE_CHECK_USER_EXIST = 3;
-		const STATE_UPDATE_USER_INFO = 4;
-		const STATE_CREATE_USER = 5;
-		const STATE_CREATE_USER_WECHAT = 6;
-		const STATE_CREATE_TOKEN = 7;
-		const STATE_SEND_RESPONSE = 0;
 
-		var code = req.query.code;
-		var accessToken = null;
-		var openId = null;
-		var userInfo = null;
-		var latestUserWechat = null;
-		var jwToken = null;
-		var latestUser = null;
 
 		if (err) {
 			console.log('state:',toState);
@@ -82,6 +85,7 @@ exports.loginByWechat = function(req,res){
 					//if the user-wechat does not exist,create user
 					var newUser = new userModel();
 					newUser.nickname = userInfo.nickname;
+					newUser.password = encryptPassword(stringHelper.randomString(6,all));
 					//newUser.createdDate = new Date();
 					newUser.lastLoginDate = new Date();
 
@@ -111,14 +115,10 @@ exports.loginByWechat = function(req,res){
 
 				break;
 				case STATE_CREATE_TOKEN:
-					
-					jwt.sign({userId:latestUser._id},
-						'xingyunzh-universal-secret',
-						{expiresIn:3600},
-						function(err,jt){
-							jwToken = jt;
-							stateMachine(err,STATE_SEND_RESPONSE);
-					});
+					tokenHelper.create(latestUser._id,function(err,jt){
+						jwToken = jt;
+						stateMachine(err,STATE_SEND_RESPONSE);
+					})
 
 				break;
 				case STATE_SEND_RESPONSE:
@@ -136,23 +136,25 @@ exports.loginByWechat = function(req,res){
 exports.getUserInfo = function(req,res){
 	var tokenString = req.body.token;
 
+	const STATE_VERIFY_TOKEN = 1;
+	const STATE_GET_USER_PROFILE = 2;
+	const STATE_GET_WECHAT_PROFILE = 3;
+	const STATE_BUILD_FULL_PROFILE = 4;
+	const STATE_SEND_RESPONSE = 0;
+
+	var tokenObject = null;
+	var latestUser = null;
+	var latestUserWechat = null;
+	var latestFullProfile = null;
+
+	stateMachine(null,STATE_VERIFY_TOKEN);
+
 	function stateMachine(err,toState){
-
-		const STATE_VERIFY_TOKEN = 1;
-		const STATE_GET_USER_PROFILE = 2;
-		const STATE_GET_WECHAT_PROFILE = 3;
-		const STATE_BUILD_FULL_PROFILE = 4;
-		const STATE_SEND_RESPONSE = 0;
-
-		var tokenObject = null;
-		var latestUser = null;
-		var latestUserWechat = null;
-		var latestFullProfile = null;
 
 		if (err) {
 			console.log('state:',toState);
 			console.log('error:',err);
-			if (toState == STATE_VERIFY_TOKEN) {
+			if (toState == STATE_VERIFY_TOKEN + 1) {
 				res.send(util.wrapBody('Invalid Token','E'));
 			}else{
 				res.send(util.wrapBody('Internal Error','E'));
@@ -163,12 +165,10 @@ exports.getUserInfo = function(req,res){
 
 			switch(toState){
 				case STATE_VERIFY_TOKEN:
-					jwt.verify(tokenString,
-						XINGYUNZH_UNIVERSAL_SECRET,
-						function(err,to){
-							tokenObject = to;
-							stateMachine(err,STATE_GET_USER_PROFILE);
-						});
+					tokenHelper.verify(tokenString,function(err,to){
+						tokenObject = to;
+						stateMachine(err,STATE_GET_USER_PROFILE);
+					});
 				break;
 				case STATE_GET_USER_PROFILE:
 					userModel
@@ -201,52 +201,212 @@ exports.getUserInfo = function(req,res){
 		}
 	}
 
-
-	// jwt.verify(tokenString,
-	// 	XINGYUNZH_UNIVERSAL_SECRET,
-	// 	function(err,tokenObject){
-	// 		if (err) {
-	// 			console.log('error',err);
-	// 			res.send(util.wrapBody('Invalid Token','E'));
-	// 		}else{
-	// 			userModel
-	// 			.findOne(tokenObject.userId)
-	// 			.exec(function(err,result){
-	// 				if (err) {
-	// 					console.log('error',err);
-	// 					res.send(util.wrapBody('Internal Error','E'));
-	// 				}else if(result){
-	// 					userWechatModel
-	// 					.findOne({user:result._id})
-	// 					.exec(function(err,result){
-							
-	// 					})
-	// 					res.send(util.wrapBody(userInfo:result));
-	// 				}else{
-	// 					console.log('error','No user found');
-	// 					res.send(util.wrapBody('No user found','E'));
-	// 				};
-	// 			});
-	// 		}
-	// });
 };
 
 exports.login = function(req,res){
 	var email = req.body.email;
 	var password = req.body.password;
 
-	userModel
-	.update({
-		email:email,
-		password:encryptPassword(password)
-	},{
-		latestLoginDate:new Date()
-	}).exec(function(err,result){
+	const STATE_VERIFY_USER = 1;
+	const STATE_CREATE_TOKEN = 2;
+	const STATE_SEND_RESPONSE = 0;
 
-	})
+	var latestUser = null;
+	var authenticated = false;
+	var jwToken = null;
+
+	stateMachine(null,STATE_VERIFY_USER);
+
+	function stateMachine(err,toState){
+
+		if (err) {
+			console.log('state:',toState);
+			console.log('error:',err);
+			res.send(util.wrapBody('Internal Error','E'));
+		} else {
+			switch(toState){
+				case STATE_VERIFY_USER:
+
+					userModel
+					.update({
+						email:email,
+						password:encryptPassword(password)
+					},{
+						latestLoginDate:new Date()
+					}).exec(function(err,lu){
+						latestUser = lu;
+						stateMachine(err,STATE_CREATE_TOKEN);
+					})
+				break;
+				case STATE_CREATE_TOKEN:
+					if (latestUser == null) {
+						stateMachine(null,STATE_SEND_RESPONSE);
+					}else{
+						tokenHelper.create(latestUser._id,function(err,jt){
+								jwToken = jt;
+								authenticated = true;
+								stateMachine(err,STATE_SEND_RESPONSE);
+						})
+					}
+				break;
+				case STATE_SEND_RESPONSE:
+					var response = {};
+					if (authenticated) {
+						res.send(util.wrapBody({token:jwToken}));
+					}else{
+						res.send(util.wrapBody({authenticated:false}));
+					}
+					
+				break;
+				default:
+					console.log('Invalid State');
+					res.send(util.wrapBody('Internal Error','E'));
+			}
+		}
+	}
+
 }
 
 exports.createUser = function(req,res){
+	console.log('inside createUser',req.body);
+
+	var email = req.body.email;
+	var password = req.body.password;
+
+	const STATE_CHECK_USER_EXIST = 1;
+	const STATE_CREATE_USER = 2;
+	const STATE_CREATE_REGISTRATION = 3;
+	const STATE_SEND_RESPONSE = 0;
+
+	var latestUser = null;
+	var isUserExist = null;
+	var latestRegistration = null;
+	var jwToken = null;
+
+	stateMachine(null,STATE_CHECK_USER_EXIST);
+
+	function stateMachine(err,toState){
+		console.log('current state:',toState);
+
+		if (err) {
+			console.log('state:',toState);
+			console.log('error:',err);
+			res.send(util.wrapBody('Internal Error','E'));
+		} else {
+			switch(toState){
+				case STATE_CHECK_USER_EXIST:
+
+					userModel
+					.findOne({email:email})
+					.count()
+					.exec(function(err,result){
+						isUserExist = result;
+						stateMachine(err,STATE_CREATE_USER);
+					})
+				break;
+				case STATE_CREATE_USER:
+					if (isUserExist > 0) {
+						stateMachine(null,STATE_SEND_RESPONSE);
+					}else{
+
+						console.log('password',password);
+
+						var newUser = new userModel();
+						newUser.email = email;
+						newUser.password = encryptPassword(password);
+
+						newUser
+						.save(function(err,lu){
+							latestUser = lu;
+							stateMachine(err,STATE_CREATE_REGISTRATION);
+						});
+					}
+
+				break;
+				case STATE_CREATE_REGISTRATION:
+					var newRegistration = new registrationModel();
+					newRegistration.user = latestUser._id;
+					newRegistration.activateCode = stringHelper.randomString(4,['lower','digit']);
+
+					newRegistration
+					.save(function(err,lr){
+						latestRegistration = lr;
+						stateMachine(err,STATE_SEND_RESPONSE);
+					});
+				break;
+				case STATE_SEND_RESPONSE:
+					if (isUserExist > 0) {
+						res.send(util.wrapBody('Email is used','E'));
+					}else{
+						res.send(util.wrapBody({activateCode:latestRegistration.activateCode}));
+					}
+				break;
+				default:
+					console.log('Invalid State');
+					res.send(util.wrapBody('Internal Error','E'));
+			}
+		}
+	}
+}
+
+exports.checkIfActivated = function(req,res){
+
+	console.log('token',req.tokenObject);
+
+	var tokenString = req.body.token;
+
+	const STATE_VERIFY_TOKEN = 1;
+	const STATE_CHECK_ACTIVATED = 2;
+	const STATE_SEND_RESPONSE = 0;
+
+	var tokenObject = null;
+	var latestRegistration = null;
+
+	stateMachine(null,STATE_VERIFY_TOKEN);
+
+	function stateMachine(err,toState){
+
+		if (err) {
+			console.log('state:',toState);
+			console.log('error:',err);
+			if (toState == STATE_VERIFY_TOKEN + 1) {
+				res.send(util.wrapBody('Invalid Token','E'));
+			}else{
+				res.send(util.wrapBody('Internal Error','E'));
+			}
+
+		}else{
+			console.log('state',toState);
+
+			switch(toState){
+				case STATE_VERIFY_TOKEN:
+					tokenHelper.verify(tokenString,function(err,to){
+						tokenObject = to;
+						stateMachine(err,STATE_CHECK_ACTIVATED);
+					});
+				break;
+				case STATE_CHECK_ACTIVATED:
+					registrationModel
+					.findOne({user:tokenObject.userId})
+					.exec(function(err,lr){
+						latestRegistration = lr;
+						stateMachine(err,STATE_SEND_RESPONSE);
+					})
+				break;
+				case STATE_SEND_RESPONSE:
+					res.send(util.wrapBody({isActivated:latestRegistration.isActivated}));
+				break;
+				default:
+					console.log('Invalid State');
+					res.send(util.wrapBody('Internal Error','E'));
+			}
+		}
+	}
+}
+
+exports.activateUser = function(req,res){
+	var activateCode = req.body.activateCode;
+
 
 }
 
@@ -258,13 +418,20 @@ exports.wechatBinding = function(req,res){
 	
 }
 
+exports.getAllUsers = function(req,res){
+	
+}
+
 function encryptPassword(rawPassword){
+	console.log('password',rawPassword);
+
 	var sha1 = crypto.createHash('sha1');
 
 	sha1.update(rawPassword);
 
 	return sha1.digest('hex');
 }
+
 
 
 

@@ -6,7 +6,6 @@ var userSchema = Schema({
 
 	password:{
 		type:String,
-		'default':'000000'
 	},
 
 	nickname:String,
@@ -16,7 +15,10 @@ var userSchema = Schema({
 		'default': new Date()
 	},
 
-	email:String,
+	email:{
+		type:String,
+
+	},
 
 	lastLoginDate:Date
 });
