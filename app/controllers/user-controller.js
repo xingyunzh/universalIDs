@@ -4,7 +4,7 @@ var crypto = require('crypto');
 
 var userModel = require('../models/user');
 var userWechatModel = require('../models/user-wechat');
-var fullPorfileMode = require('../models/full-profile');
+var fullProfile = require('../models/full-profile');
 
 var XINGYUNZH_UNIVERSAL_SECRET = "xingyunzh-universal-secret";
 
@@ -154,9 +154,10 @@ exports.getUserInfo = function(req,res){
 			console.log('error:',err);
 			if (toState == STATE_VERIFY_TOKEN) {
 				res.send(util.wrapBody('Invalid Token','E'));
-			}else
+			}else{
 				res.send(util.wrapBody('Internal Error','E'));
 			}
+
 		}else{
 			console.log('state',toState);
 
@@ -187,46 +188,47 @@ exports.getUserInfo = function(req,res){
 					});
 				break;
 				case STATE_BUILD_FULL_PROFILE:
-					var newFullProfile = 
+					latestFullProfile = new fullProfile(latestUser,latestUserWechat);
+					stateMachine(null,STATE_SEND_RESPONSE);
 				break;
 				case STATE_SEND_RESPONSE:
-					res.send(util.wrapBody(userInfo:result));
+					res.send(util.wrapBody({userInfo:latestFullProfile}));
 				break;
 				default: 
-					console.log('Invalide State');
+					console.log('Invalid State');
 					res.send(util.wrapBody('Internal Error','E'));
 			}
 		}
 	}
 
 
-	jwt.verify(tokenString,
-		XINGYUNZH_UNIVERSAL_SECRET,
-		function(err,tokenObject){
-			if (err) {
-				console.log('error',err);
-				res.send(util.wrapBody('Invalid Token','E'));
-			}else{
-				userModel
-				.findOne(tokenObject.userId)
-				.exec(function(err,result){
-					if (err) {
-						console.log('error',err);
-						res.send(util.wrapBody('Internal Error','E'));
-					}else if(result){
-						userWechatModel
-						.findOne({user:result._id})
-						.exec(function(err,result){
+	// jwt.verify(tokenString,
+	// 	XINGYUNZH_UNIVERSAL_SECRET,
+	// 	function(err,tokenObject){
+	// 		if (err) {
+	// 			console.log('error',err);
+	// 			res.send(util.wrapBody('Invalid Token','E'));
+	// 		}else{
+	// 			userModel
+	// 			.findOne(tokenObject.userId)
+	// 			.exec(function(err,result){
+	// 				if (err) {
+	// 					console.log('error',err);
+	// 					res.send(util.wrapBody('Internal Error','E'));
+	// 				}else if(result){
+	// 					userWechatModel
+	// 					.findOne({user:result._id})
+	// 					.exec(function(err,result){
 							
-						})
-						res.send(util.wrapBody(userInfo:result));
-					}else{
-						console.log('error','No user found');
-						res.send(util.wrapBody('No user found','E'));
-					};
-				});
-			}
-	});
+	// 					})
+	// 					res.send(util.wrapBody(userInfo:result));
+	// 				}else{
+	// 					console.log('error','No user found');
+	// 					res.send(util.wrapBody('No user found','E'));
+	// 				};
+	// 			});
+	// 		}
+	// });
 };
 
 exports.login = function(req,res){
