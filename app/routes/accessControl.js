@@ -15,8 +15,8 @@ module.exports = function(app){
 				if (err) {
 					res.send(util.wrapBody('Invalid token','E'));
 				}else{
-					req.tokenObject = tokenObject;
-					console.log('tokenObject',tokenObject);
+					req.token = tokenObject;
+					console.log('token',tokenObject);
 					next();
 				}
 			})

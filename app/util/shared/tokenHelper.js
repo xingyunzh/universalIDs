@@ -8,6 +8,8 @@ module.exports.verify = function(tokenString,callback){
 }
 
 module.exports.create = function(userId,callback){
+	console.log('userId',userId);
+	
 	jwt.sign({
 		userId:userId
 	},XINGYUNZH_UNIVERSAL_SECRET,{

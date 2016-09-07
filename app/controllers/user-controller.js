@@ -15,10 +15,11 @@ exports.loginByWechat = function(req,res){
 	const STATE_GET_TOKEN = 1;
 	const STATE_GET_USER_INFO = 2;
 	const STATE_CHECK_USER_EXIST = 3;
-	const STATE_UPDATE_USER_INFO = 4;
-	const STATE_CREATE_USER = 5;
-	const STATE_CREATE_USER_WECHAT = 6;
-	const STATE_CREATE_TOKEN = 7;
+	const STATE_UPDATE_USER_WECHAT = 4;
+	const STATE_UPDATE_USER = 5
+	const STATE_CREATE_USER = 6;
+	const STATE_CREATE_USER_WECHAT = 7;
+	const STATE_CREATE_TOKEN = 8;
 	const STATE_SEND_RESPONSE = 0;
 
 	var code = req.query.code;
@@ -67,19 +68,37 @@ exports.loginByWechat = function(req,res){
 						if(result == null){
 							stateMachine(err,STATE_CREATE_USER);
 						}else{
-							stateMachine(err,STATE_UPDATE_USER_INFO);
+							latestUserWechat = result;
+							stateMachine(err,STATE_UPDATE_USER_WECHAT);
 						}
 					});
 				break;
-				case STATE_UPDATE_USER_INFO:
+				case STATE_UPDATE_USER_WECHAT:
 					//if the user-wechat exist
 					userWechatModel
-					.update(userInfo)
+					.findOneAndUpdate({
+						user:latestUserWechat.user
+					},userInfo,{
+						new:true
+					})
 					.populate('user')
 					.exec(function(err,luw){
 						latestUserWechat = luw;
-						stateMachine(err,STATE_CREATE_TOKEN);
+						stateMachine(err,STATE_UPDATE_USER);
 					});
+				break;
+				case STATE_UPDATE_USER:
+					userModel
+					.findOneAndUpdate({
+						id:latestUserWechat.user
+					},{
+						lastLoginDate:new Date()
+					},{
+						new:true
+					},function(err,lu){
+						latestUser = lu;
+						stateMachine(err,STATE_CREATE_TOKEN);
+					})
 				break;
 				case STATE_CREATE_USER:
 					//if the user-wechat does not exist,create user
@@ -133,8 +152,8 @@ exports.loginByWechat = function(req,res){
 
 };
 
-exports.getUserInfo = function(req,res){
-	var tokenString = req.body.token;
+exports.getUserProfile = function(req,res){
+	//var tokenString = req.body.token;
 
 	const STATE_VERIFY_TOKEN = 1;
 	const STATE_GET_USER_PROFILE = 2;
@@ -142,17 +161,20 @@ exports.getUserInfo = function(req,res){
 	const STATE_BUILD_FULL_PROFILE = 4;
 	const STATE_SEND_RESPONSE = 0;
 
-	var tokenObject = null;
+	var tokenObject = req.token;
 	var latestUser = null;
 	var latestUserWechat = null;
 	var latestFullProfile = null;
 
-	stateMachine(null,STATE_VERIFY_TOKEN);
+	//stateMachine(null,STATE_VERIFY_TOKEN);
+	stateMachine(null,STATE_GET_USER_PROFILE);
+
 
 	function stateMachine(err,toState){
+		console.log('state:',toState);
 
 		if (err) {
-			console.log('state:',toState);
+			
 			console.log('error:',err);
 			if (toState == STATE_VERIFY_TOKEN + 1) {
 				res.send(util.wrapBody('Invalid Token','E'));
@@ -161,7 +183,6 @@ exports.getUserInfo = function(req,res){
 			}
 
 		}else{
-			console.log('state',toState);
 
 			switch(toState){
 				case STATE_VERIFY_TOKEN:
@@ -171,17 +192,19 @@ exports.getUserInfo = function(req,res){
 					});
 				break;
 				case STATE_GET_USER_PROFILE:
+
 					userModel
-					.findOne(tokenObject.userId)
+					.findById(tokenObject.userId)
 					.exec(function(err,lu){
 						latestUser = lu;
+						console.log('lu',lu);
 						stateMachine(err,STATE_GET_WECHAT_PROFILE);
 					});
 				break;
 				case STATE_GET_WECHAT_PROFILE:
 
 					userWechatModel
-					.findOne({user:latestUser._id})
+					.findOne({user:tokenObject.userId})
 					.exec(function(err,luw){
 						latestUserWechat = luw;
 						stateMachine(err,STATE_BUILD_FULL_PROFILE);
@@ -192,7 +215,7 @@ exports.getUserInfo = function(req,res){
 					stateMachine(null,STATE_SEND_RESPONSE);
 				break;
 				case STATE_SEND_RESPONSE:
-					res.send(util.wrapBody({userInfo:latestFullProfile}));
+					res.send(util.wrapBody({profile:latestFullProfile}));
 				break;
 				default: 
 					console.log('Invalid State');
@@ -228,11 +251,13 @@ exports.login = function(req,res){
 				case STATE_VERIFY_USER:
 
 					userModel
-					.update({
+					.findOneAndUpdate({
 						email:email,
 						password:encryptPassword(password)
 					},{
 						latestLoginDate:new Date()
+					},{
+						new:true
 					}).exec(function(err,lu){
 						latestUser = lu;
 						stateMachine(err,STATE_CREATE_TOKEN);
@@ -351,23 +376,20 @@ exports.createUser = function(req,res){
 
 exports.checkIfActivated = function(req,res){
 
-	console.log('token',req.tokenObject);
-
-	var tokenString = req.body.token;
-
 	const STATE_VERIFY_TOKEN = 1;
 	const STATE_CHECK_ACTIVATED = 2;
 	const STATE_SEND_RESPONSE = 0;
 
-	var tokenObject = null;
+	var tokenObject = req.token;
 	var latestRegistration = null;
 
-	stateMachine(null,STATE_VERIFY_TOKEN);
+	//stateMachine(null,STATE_VERIFY_TOKEN);
+	stateMachine(null,STATE_CHECK_ACTIVATED);
 
 	function stateMachine(err,toState){
+		console.log('state',toState);
 
 		if (err) {
-			console.log('state:',toState);
 			console.log('error:',err);
 			if (toState == STATE_VERIFY_TOKEN + 1) {
 				res.send(util.wrapBody('Invalid Token','E'));
@@ -376,8 +398,6 @@ exports.checkIfActivated = function(req,res){
 			}
 
 		}else{
-			console.log('state',toState);
-
 			switch(toState){
 				case STATE_VERIFY_TOKEN:
 					tokenHelper.verify(tokenString,function(err,to){
@@ -407,15 +427,132 @@ exports.checkIfActivated = function(req,res){
 exports.activateUser = function(req,res){
 	var activateCode = req.body.activateCode;
 
+	const STATE_ACTIVATE_USER = 1;
+	const STATE_SEND_RESPONSE = 0;
 
+	var tokenObject = req.token;
+	var latestRegistration = null;
+
+	stateMachine(null,STATE_ACTIVATE_USER);
+
+	function stateMachine(err,toState){
+		console.log('state',toState);
+
+		if (err) {
+			console.log('error:',err);
+			if (toState == STATE_VERIFY_TOKEN + 1) {
+				res.send(util.wrapBody('Invalid Token','E'));
+			}else{
+				res.send(util.wrapBody('Internal Error','E'));
+			}
+
+		}else{
+			switch(toState){
+				case STATE_ACTIVATE_USER:
+					registrationModel
+					.findOneAndUpdate({
+						user:tokenObject.userId,
+						activateCode:activateCode
+					},{
+						isActivated:true
+					},{
+						new:true
+					},function(err,lr){
+						latestRegistration = lr;
+						stateMachine(err,STATE_SEND_RESPONSE);
+					})
+
+				break;
+				case STATE_SEND_RESPONSE:
+					if (latestRegistration != null && latestRegistration.isActivated) {
+						res.send(util.wrapBody({activated:true}));
+					}else{
+						res.send(util.wrapBody({activated:false}));
+					}
+				break;
+				default:
+
+			}
+		}
+	}
 }
 
 exports.updateUser = function(req,res){
+	var profile = req.body.profile;
 
+	const STATE_CHECK_ACTIVATED = 1;
+	const STATE_UPDATE_USER = 2;
+	const STATE_SEND_RESPONSE = 0;
+
+	var tokenObject = req.token;
+	var latestRegistration = null;
+	var latestUser = null;
+
+	stateMachine(null,STATE_CHECK_ACTIVATED);
+
+	function stateMachine(err,toState){
+		console.log('state',toState);
+
+		if (err) {
+			console.log('error:',err);
+			if (toState == STATE_VERIFY_TOKEN + 1) {
+				res.send(util.wrapBody('Invalid Token','E'));
+			}else{
+				res.send(util.wrapBody('Internal Error','E'));
+			}
+
+		}else{
+			switch(toState){
+				case STATE_CHECK_ACTIVATED:
+					registrationModel
+					.findOne({user:tokenObject.userId})
+					.exec(function(err,lr){
+						latestRegistration = lr;
+						stateMachine(err,STATE_SEND_RESPONSE);
+					});
+				break;
+				case STATE_UPDATE_USER:
+					if (latestRegistration != null && latestRegistration.isActivated) {
+						userModel
+						.findOneAndUpdate({
+							id:tokenObject.userId
+						},profile,{
+							new:true
+						},function(err,lu){
+							latestUser = lu;
+							stateMachine(err,STATE_SEND_RESPONSE);
+						});
+					}else{
+						stateMachine(err,STATE_SEND_RESPONSE);
+					}
+
+				break;
+				case STATE_SEND_RESPONSE:
+					if (!latestRegistration.isActivated) {
+						res.send(util.wrapBody('Not activated','E'));
+					}else if (latestUser != null) {
+						res.send(util.wrapBody({isSuccessful:true}));
+					}else{
+						res.send(util.wrapBody({isSuccessful:false}));
+					}
+				break;
+				default:
+
+			}
+		}
+	}
 }
 
 exports.wechatBinding = function(req,res){
 	
+}
+
+exports.updatePassword = function(req,res){
+
+}
+
+exports.resetPassword = function(req,res){
+
 }
 
 exports.getAllUsers = function(req,res){
@@ -423,7 +560,6 @@ exports.getAllUsers = function(req,res){
 }
 
 function encryptPassword(rawPassword){
-	console.log('password',rawPassword);
 
 	var sha1 = crypto.createHash('sha1');
 

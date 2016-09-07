@@ -10,13 +10,19 @@ router.post('/login/wechat',userController.loginByWechat);
 
 router.post('/login/email',userController.login);
 
-router.post('/api/checkIfActivated',userController.checkIfActivated);
+router.post('/api/activated',userController.checkIfActivated);
 
-router.post('/api/getUserInfo',userController.getUserInfo);
+router.post('/api/profile',userController.getUserProfile);
 
 router.post('/register',userController.createUser);
 
 router.post('/api/activate',userController.activateUser);
+
+router.post('/api/profile/update',userController.updateUser);
+
+router.post('/api/password/reset',userController.updatePassword);
+
+router.post('/api/password/update',userController.resetPassword);
 
 router.get('/list',userController.getAllUsers)
 
