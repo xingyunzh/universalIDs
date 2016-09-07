@@ -5,7 +5,6 @@ var logger = require('morgan');
 var mongoose = require('mongoose');
 var cookieParser = require('cookie-parser');
 var bodyParser = require('body-parser');
-var q = require('q');
 
 var apiRouter = require('./routes/api-router.js');
 
@@ -17,13 +16,12 @@ mongoose.connect(mongoDBUrl, function(err){
     console.log("mongo db connect success!");
   }
 });
-mongoose.Promise = q.Promise;
 
 var app = express();
 
 // view engine setup
-app.set('views', path.join(__dirname, 'views'));
-app.set('view engine', 'jade');
+// app.set('views', path.join(__dirname, 'views'));
+// app.set('view engine', 'jade');
 
 // uncomment after placing your favicon in /public
 //app.use(favicon(path.join(__dirname, 'public', 'favicon.ico')));

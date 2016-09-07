@@ -14,7 +14,7 @@
     "jade": "~1.11.0",
     "morgan": "~1.7.0",
     "serve-favicon": "~2.3.0",
-    "q": "^1.4.1",
-    "wechat-oauth":"~1.1.1"
+    "wechat-oauth":"~1.1.1",
+    "jsonwebtoken":"^7.1.7",
   }
 }

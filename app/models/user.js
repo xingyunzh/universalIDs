@@ -10,28 +10,6 @@ var userSchema = Schema({
 	},
 
 	nickname:String,
-
-	// gender:Number,
-
-	// province:String,
-
-	// city:String,
-
-	// country:String,
-
-	// headImgUrl:String,
-
-	// privilege:[],
-
-	// openID:{
-	// 	type:Array,
-	// 	index:true
-	// },
-
-	// unionID:{
-	// 	type:String,
-	// 	index:true
-	// },
 	
 	createdDate:{
 		type:Date,
