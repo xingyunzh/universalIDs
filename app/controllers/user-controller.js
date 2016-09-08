@@ -12,17 +12,17 @@ var registrationModel = require('../models/registration');
 exports.loginByWechat = function(req,res){
 
 	//States declaration
-	const STATE_GET_TOKEN = 1;
+	const STATE_GET_WECHAT_TOKEN = 1;
 	const STATE_GET_USER_INFO = 2;
 	const STATE_CHECK_USER_EXIST = 3;
 	const STATE_UPDATE_USER_WECHAT = 4;
-	const STATE_UPDATE_USER = 5
+	const STATE_UPDATE_USER = 5;
 	const STATE_CREATE_USER = 6;
 	const STATE_CREATE_USER_WECHAT = 7;
 	const STATE_CREATE_TOKEN = 8;
 	const STATE_SEND_RESPONSE = 0;
 
-	var code = req.query.code;
+	var code = req.body.code;
 	var accessToken = null;
 	var openId = null;
 	var userInfo = null;
@@ -33,18 +33,16 @@ exports.loginByWechat = function(req,res){
 	stateMachine(null,STATE_GET_TOKEN);
 
 	function stateMachine(err,toState){
-
+		console.log('state:',toState);
 
 		if (err) {
-			console.log('state:',toState);
+			
 			console.log('error:',err);
 			res.send(util.wrapBody('Internal Error','E'));
 		}else{
-			console.log('state',toState);
-			//console.log('argument',arguments[2]);
 
 			switch(toState){
-				case STATE_GET_TOKEN: 
+				case STATE_GET_WECAHAT_TOKEN: 
 					//get accessToken&openID by code
 					wechat.getAccessToken(code,function(err,at,oi){
 						accessToken = at;
@@ -55,6 +53,7 @@ exports.loginByWechat = function(req,res){
 				case STATE_GET_USER_INFO:
 					//get user info from wechat
 					wechat.getUserInfo(accessToken,function(err,ui){
+						console.log('wechat info',ui);
 						userInfo = ui;
 						stateMachine(err,STATE_CHECK_USER_EXIST);
 					});
@@ -81,7 +80,7 @@ exports.loginByWechat = function(req,res){
 					},userInfo,{
 						new:true
 					})
-					.populate('user')
+					//.populate('user')
 					.exec(function(err,luw){
 						latestUserWechat = luw;
 						stateMachine(err,STATE_UPDATE_USER);
@@ -153,9 +152,7 @@ exports.loginByWechat = function(req,res){
 };
 
 exports.getUserProfile = function(req,res){
-	//var tokenString = req.body.token;
 
-	const STATE_VERIFY_TOKEN = 1;
 	const STATE_GET_USER_PROFILE = 2;
 	const STATE_GET_WECHAT_PROFILE = 3;
 	const STATE_BUILD_FULL_PROFILE = 4;
@@ -166,7 +163,6 @@ exports.getUserProfile = function(req,res){
 	var latestUserWechat = null;
 	var latestFullProfile = null;
 
-	//stateMachine(null,STATE_VERIFY_TOKEN);
 	stateMachine(null,STATE_GET_USER_PROFILE);
 
 
@@ -176,21 +172,11 @@ exports.getUserProfile = function(req,res){
 		if (err) {
 			
 			console.log('error:',err);
-			if (toState == STATE_VERIFY_TOKEN + 1) {
-				res.send(util.wrapBody('Invalid Token','E'));
-			}else{
-				res.send(util.wrapBody('Internal Error','E'));
-			}
+			res.send(util.wrapBody('Internal Error','E'));
 
 		}else{
 
 			switch(toState){
-				case STATE_VERIFY_TOKEN:
-					tokenHelper.verify(tokenString,function(err,to){
-						tokenObject = to;
-						stateMachine(err,STATE_GET_USER_PROFILE);
-					});
-				break;
 				case STATE_GET_USER_PROFILE:
 
 					userModel
@@ -304,7 +290,7 @@ exports.createUser = function(req,res){
 	const STATE_SEND_RESPONSE = 0;
 
 	var latestUser = null;
-	var isUserExist = null;
+	var isUserExist = 0;
 	var latestRegistration = null;
 	var jwToken = null;
 
@@ -374,37 +360,24 @@ exports.createUser = function(req,res){
 	}
 }
 
-exports.checkIfActivated = function(req,res){
+exports.checkEmailActivated = function(req,res){
 
-	const STATE_VERIFY_TOKEN = 1;
-	const STATE_CHECK_ACTIVATED = 2;
+	const STATE_CHECK_ACTIVATED = 1;
 	const STATE_SEND_RESPONSE = 0;
 
 	var tokenObject = req.token;
 	var latestRegistration = null;
 
-	//stateMachine(null,STATE_VERIFY_TOKEN);
 	stateMachine(null,STATE_CHECK_ACTIVATED);
 
 	function stateMachine(err,toState){
 		console.log('state',toState);
 
 		if (err) {
-			console.log('error:',err);
-			if (toState == STATE_VERIFY_TOKEN + 1) {
-				res.send(util.wrapBody('Invalid Token','E'));
-			}else{
-				res.send(util.wrapBody('Internal Error','E'));
-			}
+			res.send(util.wrapBody('Internal Error','E'));
 
 		}else{
 			switch(toState){
-				case STATE_VERIFY_TOKEN:
-					tokenHelper.verify(tokenString,function(err,to){
-						tokenObject = to;
-						stateMachine(err,STATE_CHECK_ACTIVATED);
-					});
-				break;
 				case STATE_CHECK_ACTIVATED:
 					registrationModel
 					.findOne({user:tokenObject.userId})
@@ -424,7 +397,7 @@ exports.checkIfActivated = function(req,res){
 	}
 }
 
-exports.activateUser = function(req,res){
+exports.activateEmail = function(req,res){
 	var activateCode = req.body.activateCode;
 
 	const STATE_ACTIVATE_USER = 1;
@@ -440,11 +413,7 @@ exports.activateUser = function(req,res){
 
 		if (err) {
 			console.log('error:',err);
-			if (toState == STATE_VERIFY_TOKEN + 1) {
-				res.send(util.wrapBody('Invalid Token','E'));
-			}else{
-				res.send(util.wrapBody('Internal Error','E'));
-			}
+			res.send(util.wrapBody('Internal Error','E'));
 
 		}else{
 			switch(toState){
@@ -471,13 +440,14 @@ exports.activateUser = function(req,res){
 					}
 				break;
 				default:
-
+					console.log('Invalid State');
+					res.send(util.wrapBody('Internal Error','E'));
 			}
 		}
 	}
 }
 
-exports.updateUser = function(req,res){
+exports.updateProfile = function(req,res){
 	var profile = req.body.profile;
 
 	const STATE_CHECK_ACTIVATED = 1;
@@ -495,11 +465,7 @@ exports.updateUser = function(req,res){
 
 		if (err) {
 			console.log('error:',err);
-			if (toState == STATE_VERIFY_TOKEN + 1) {
-				res.send(util.wrapBody('Invalid Token','E'));
-			}else{
-				res.send(util.wrapBody('Internal Error','E'));
-			}
+			res.send(util.wrapBody('Internal Error','E'));
 
 		}else{
 			switch(toState){
@@ -516,7 +482,9 @@ exports.updateUser = function(req,res){
 						userModel
 						.findOneAndUpdate({
 							id:tokenObject.userId
-						},profile,{
+						},{
+							nickname:profile.nickname
+						},{
 							new:true
 						},function(err,lu){
 							latestUser = lu;
@@ -537,7 +505,8 @@ exports.updateUser = function(req,res){
 					}
 				break;
 				default:
-
+					console.log('Invalid State');
+					res.send(util.wrapBody('Internal Error','E'));
 			}
 		}
 	}
@@ -545,14 +514,198 @@ exports.updateUser = function(req,res){
 
 exports.wechatBinding = function(req,res){
 	
+	//States declaration
+	const STATE_GET_TOKEN = 1;
+	const STATE_GET_USER_INFO = 2;
+	const STATE_UPDATE_USER_WECHAT = 3;
+	const STATE_SEND_RESPONSE = 0;
+
+	var code = req.body.code;
+	var userId = req.token.userId
+	var accessToken = null;
+	var openId = null;
+	var userInfo = null;
+	var latestUserWechat = null;
+
+	stateMachine(null,STATE_GET_TOKEN);
+
+	function stateMachine(err,toState){
+
+
+		if (err) {
+			console.log('state:',toState);
+			console.log('error:',err);
+			res.send(util.wrapBody('Internal Error','E'));
+		}else{
+			console.log('state',toState);
+			//console.log('argument',arguments[2]);
+
+			switch(toState){
+				case STATE_GET_TOKEN: 
+					//get accessToken&openID by code
+					wechat.getAccessToken(code,function(err,at,oi){
+						accessToken = at;
+						openId = oi;
+						stateMachine(err,STATE_GET_USER_INFO);
+					});
+				break;
+				case STATE_GET_USER_INFO:
+					//get user info from wechat
+					wechat.getUserInfo(accessToken,function(err,ui){
+						userInfo = ui;
+						stateMachine(err,STATE_CHECK_USER_EXIST);
+					});
+				break;
+				case STATE_UPDATE_USER_WECHAT:
+					//if the user-wechat exist
+					userWechatModel
+					.findOneAndUpdate({
+						user:userId
+					},userInfo,{
+						upsert:true,
+						new:true
+					})
+					.exec(function(err,luw){
+						latestUserWechat = luw;
+						stateMachine(err,STATE_UPDATE_USER);
+					});
+				break;
+				case STATE_SEND_RESPONSE:
+					if (latestUserWechat != null) {
+						res.send(util.wrapBody({isSuccessful:true}));
+					}else{
+						res.send(util.wrapBody({isSuccessful:false}));
+					}
+				break;
+				default:
+					console.log('Invalid State');
+					res.send(util.wrapBody('Internal Error','E'));
+			}
+		}
+	}
 }
 
 exports.updatePassword = function(req,res){
+	var userId = req.token.userId;
+	var password = req.body.password;
+
+	var STATE_UPDATE_PASSWORD = 1;
+	var STATE_SEND_RESPONSE = 0;
+
+	stateMachine(null,STATE_UPDATE_PASSWORD);
+
+	function stateMachine(err,toState){
+		console.log('current state:',toState);
+
+		if (err) {
+			console.log('error:',err);
+			res.send(util.wrapBody('Internal Error','E'));
+		} else {
+			switch(toState){
+				case STATE_UPDATE_PASSWORD:
+					userModel
+					.findOneAndUpdate({
+						id:userId
+					},{
+						password:encryptPassword(password)
+					},function(err){
+						stateMachine(err,STATE_SEND_RESPONSE);
+					})
+				break;
+				case STATE_SEND_RESPONSE:
+					res.send(util.wrapBody({isSuccessful:true}));
+				break;
+				default:
+					console.log('Invalid State');
+					res.send(util.wrapBody('Internal Error','E'));
+			}
+		}
+	}
 
 }
 
 exports.resetPassword = function(req,res){
 
+}
+
+exports.updateEmail = function(req,res){
+	console.log('inside updateEmail',req.body);
+
+	var email = req.body.email;
+	var password = req.body.password;
+	var userId = req.token.userId;
+
+	const STATE_CHECK_EMAIL_USED = 1;
+	const STATE_UPDATE_USER = 2;
+	const STATE_UPDATE_REGISTRATION = 3;
+	const STATE_SEND_RESPONSE = 0;
+
+	var isUserExist = 0;
+	var latestUser = null;
+	var latestRegistration = null;
+	var jwToken = null;
+
+	stateMachine(null,STATE_CHECK_EMAIL_USED);
+
+	function stateMachine(err,toState){
+		console.log('current state:',toState);
+
+		if (err) {
+			console.log('error:',err);
+			res.send(util.wrapBody('Internal Error','E'));
+		} else {
+			switch(toState){
+				case STATE_CHECK_EMAIL_USED:
+					userModel
+					.count({
+						email:email
+					},function(err,count){
+						isUserExist = count;
+						stateMachine(err,STATE_UPDATE_USER);
+					})
+				break;
+				case STATE_UPDATE_USER:
+					if (isUserExist > 0) {
+						stateMachine(err,STATE_SEND_RESPONSE);
+					}else{
+						userModel
+						.findOneAndUpdate({
+							id:userId
+						},{
+							email:email
+						},function(err,lu){
+							latestUser = lu;
+							stateMachine(err,STATE_UPDATE_REGISTRATION);
+						});
+					}
+				break;
+				case STATE_UPDATE_REGISTRATION:
+					registrationModel
+					.findOneAndUpdate({
+						user:userId
+					},{
+						isActivated:false,
+						activateCode:stringHelper.randomString(4,'digit')
+					},{
+
+					},function(err,lr){
+						latestRegistration = lr;
+						stateMachine(err,STATE_SEND_RESPONSE);
+					})
+				break;
+				case STATE_SEND_RESPONSE:
+					if (isUserExist > 0) {
+						res.send(util.wrapBody('Email is used','E'));
+					}else{
+						res.send(util.wrapBody({activateCode:latestRegistration.activateCode}));
+					}
+				break;
+				default:
+					console.log('Invalid State');
+					res.send(util.wrapBody('Internal Error','E'));
+			}
+		}
+	}
 }
 
 exports.getAllUsers = function(req,res){
