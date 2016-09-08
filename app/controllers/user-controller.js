@@ -89,7 +89,7 @@ exports.loginByWechat = function(req,res){
 				case STATE_UPDATE_USER:
 					userModel
 					.findOneAndUpdate({
-						id:latestUserWechat.user
+						_id:latestUserWechat.user
 					},{
 						lastLoginDate:new Date()
 					},{
@@ -140,7 +140,7 @@ exports.loginByWechat = function(req,res){
 
 				break;
 				case STATE_SEND_RESPONSE:
-					var result = {token:jwToken,nickname:latestUser.nickname};
+					var result = {authenticated:true,token:jwToken,nickname:latestUser.nickname};
 
 					res.send(util.wrapBody(result));
 				break;
@@ -212,7 +212,7 @@ exports.getUserProfile = function(req,res){
 
 };
 
-exports.login = function(req,res){
+exports.loginByEmail = function(req,res){
 	var email = req.body.email;
 	var password = req.body.password;
 
@@ -263,9 +263,13 @@ exports.login = function(req,res){
 				case STATE_SEND_RESPONSE:
 					var response = {};
 					if (authenticated) {
-						res.send(util.wrapBody({token:jwToken}));
+						res.send(util.wrapBody({
+							authenticated:true,
+							token:jwToken,
+							nickname:latestUser.nickname
+						}));
 					}else{
-						res.send(util.wrapBody({authenticated:false}));
+						res.send(util.wrapBody({authenticated:false,nickname:latestUser.nickname}));
 					}
 					
 				break;
@@ -481,7 +485,7 @@ exports.updateProfile = function(req,res){
 					if (latestRegistration != null && latestRegistration.isActivated) {
 						userModel
 						.findOneAndUpdate({
-							id:tokenObject.userId
+							_id:tokenObject.userId
 						},{
 							nickname:profile.nickname
 						},{
@@ -589,6 +593,8 @@ exports.updatePassword = function(req,res){
 	var userId = req.token.userId;
 	var password = req.body.password;
 
+	var latestUser = null;
+
 	var STATE_UPDATE_PASSWORD = 1;
 	var STATE_SEND_RESPONSE = 0;
 
@@ -605,15 +611,22 @@ exports.updatePassword = function(req,res){
 				case STATE_UPDATE_PASSWORD:
 					userModel
 					.findOneAndUpdate({
-						id:userId
+						_id:userId
 					},{
 						password:encryptPassword(password)
-					},function(err){
+					},{
+						upsert:false
+					},function(err,lu){
+						latestUser = lu;
 						stateMachine(err,STATE_SEND_RESPONSE);
 					})
 				break;
 				case STATE_SEND_RESPONSE:
-					res.send(util.wrapBody({isSuccessful:true}));
+					if (latestUser != null) {
+						res.send(util.wrapBody({isSuccessful:true}));
+					}else{
+						res.send(util.wrapBody({isSuccessful:false}));
+					}
 				break;
 				default:
 					console.log('Invalid State');
@@ -625,7 +638,52 @@ exports.updatePassword = function(req,res){
 }
 
 exports.resetPassword = function(req,res){
+	var userId = req.token.userId;
+	var password = req.body.password;
 
+	var latestUser = null;
+	var tempPassword = null;
+
+	var STATE_UPDATE_PASSWORD = 1;
+	var STATE_SEND_RESPONSE = 0;
+
+	stateMachine(null,STATE_UPDATE_PASSWORD);
+
+	function stateMachine(err,toState){
+		console.log('current state:',toState);
+
+		if (err) {
+			console.log('error:',err);
+			res.send(util.wrapBody('Internal Error','E'));
+		} else {
+			switch(toState){
+				case STATE_UPDATE_PASSWORD:
+					tempPassword = stringHelper.randomString(6,'all');
+					userModel
+					.findOneAndUpdate({
+						_id:userId
+					},{
+						password:encryptPassword(tempPassword)
+					},{
+						upsert:false
+					},function(err,lu){
+						latestUser = lu;
+						stateMachine(err,STATE_SEND_RESPONSE);
+					})
+				break;
+				case STATE_SEND_RESPONSE:
+					if (latestUser != null) {
+						res.send(util.wrapBody({isSuccessful:true}));
+					}else{
+						res.send(util.wrapBody({isSuccessful:false,tempPassword:tempPassword}));
+					}
+				break;
+				default:
+					console.log('Invalid State');
+					res.send(util.wrapBody('Internal Error','E'));
+			}
+		}
+	}
 }
 
 exports.updateEmail = function(req,res){
@@ -670,7 +728,7 @@ exports.updateEmail = function(req,res){
 					}else{
 						userModel
 						.findOneAndUpdate({
-							id:userId
+							_id:userId
 						},{
 							email:email
 						},function(err,lu){

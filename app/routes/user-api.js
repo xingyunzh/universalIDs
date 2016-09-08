@@ -10,7 +10,7 @@ router.post('/register',userController.createUser);
 
 router.post('/login/wechat',userController.loginByWechat);
 
-router.post('/login/email',userController.login);
+router.post('/login/email',userController.loginByEmail);
 
 router.post('/api/profile',userController.getUserProfile);
 
