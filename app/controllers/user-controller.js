@@ -9,6 +9,20 @@ var userWechatModel = require('../models/user-wechat');
 var fullProfile = require('../models/full-profile');
 var registrationModel = require('../models/registration');
 
+var mailService = require('./services/mail-service.js');
+
+
+exports.testingMail = function(req,res){
+	mailService.sendTestingMail(function(err,result){
+		if(err){
+	        console.log(err);
+	    }else{
+	        console.log('Message sent: ' + result.response);
+	    }
+	    res.send("OK");
+	});
+}
+
 exports.loginByWechat = function(req,res){
 
 	//States declaration

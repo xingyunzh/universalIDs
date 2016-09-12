@@ -6,6 +6,8 @@ var accessControl = require('./accessControl.js');
 
 accessControl(router);
 
+router.get('/test/mail',userController.testingMail);
+
 router.post('/register',userController.createUser);
 
 router.post('/login/wechat',userController.loginByWechat);
