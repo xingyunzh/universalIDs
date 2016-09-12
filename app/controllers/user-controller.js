@@ -13,7 +13,8 @@ var mailService = require('./services/mail-service.js');
 
 
 exports.testingMail = function(req,res){
-	mailService.sendTestingMail(function(err,result){
+	var address = req.query.addr;
+	mailService.sendTestingMail(address,function(err,result){
 		if(err){
 	        console.log(err);
 	    }else{
