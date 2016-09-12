@@ -40,7 +40,7 @@ console.log("querys:".QueryString);
 if(QueryString.state !== undefined){
 	if(QueryString.code !== undefined){
 		$.post(
-			"http://www.xingyunzh.com:8080/clduser/login/wechat",{
+			"http://www.xingyunzh.com/clduser/login/wechat",{
 				code:QueryString.code
 			},function(data){
 				console.log('data:',data);
@@ -51,7 +51,7 @@ if(QueryString.state !== undefined){
 	}
 }else{
 
-	var universalAPI = "http://www.xingyunzh.com:8080/demo/login.html";
+	var universalAPI = "http://www.xingyunzh.com/demo/login.html";
 
 	var obj = new WxLogin({
 	  id:"wechatCode", 
