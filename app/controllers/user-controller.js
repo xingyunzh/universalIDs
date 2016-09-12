@@ -75,7 +75,7 @@ exports.loginByWechat = function(req,res){
 				break;
 				case STATE_GET_USER_INFO:
 					//get user info from wechat
-					wechat.getUserInfo(accessToken,function(err,ui){
+					wechat.getUserInfo(openId,function(err,ui){
 						console.log('wechat info',ui);
 						userInfo = ui;
 						stateMachine(err,STATE_CHECK_USER_EXIST);
@@ -126,7 +126,7 @@ exports.loginByWechat = function(req,res){
 					//if the user-wechat does not exist,create user
 					var newUser = new userModel();
 					newUser.nickname = userInfo.nickname;
-					newUser.password = encryptPassword(stringHelper.randomString(6,all));
+					newUser.password = encryptPassword(stringHelper.randomString(6,'all'));
 					//newUser.createdDate = new Date();
 					newUser.lastLoginDate = new Date();
 
