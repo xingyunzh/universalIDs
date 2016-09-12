@@ -25,6 +25,12 @@ exports.testingMail = function(req,res){
 }
 
 exports.loginByWechat = function(req,res){
+	console.log('body',req.body);
+
+	if (req.body.code == undefined) {
+		res.send(util.wrapBody('Invalid Parameter','E'));
+		return;
+	}
 
 	//States declaration
 	const STATE_GET_WECHAT_TOKEN = 1;
@@ -45,7 +51,7 @@ exports.loginByWechat = function(req,res){
 	var jwToken = null;
 	var latestUser = null;
 
-	stateMachine(null,STATE_GET_TOKEN);
+	stateMachine(null,STATE_GET_WECHAT_TOKEN);
 
 	function stateMachine(err,toState){
 		console.log('state:',toState);
@@ -57,9 +63,11 @@ exports.loginByWechat = function(req,res){
 		}else{
 
 			switch(toState){
-				case STATE_GET_WECAHAT_TOKEN: 
+				case STATE_GET_WECHAT_TOKEN: 
 					//get accessToken&openID by code
 					wechat.getAccessToken(code,function(err,at,oi){
+						console.log('token',at);
+						console.log('openId',oi);
 						accessToken = at;
 						openId = oi;
 						stateMachine(err,STATE_GET_USER_INFO);
