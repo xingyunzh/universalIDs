@@ -2,11 +2,10 @@ var mongoose = require('mongoose');
 var Schema = mongoose.Schema;
 
 var userSchema = Schema({
-	username:String,
+	//username:String,
 
 	password:{
 		type:String,
-		'default':'000000'
 	},
 
 	nickname:String,
@@ -16,7 +15,10 @@ var userSchema = Schema({
 		'default': new Date()
 	},
 
-	email:String,
+	email:{
+		type:String,
+
+	},
 
 	lastLoginDate:Date
 });

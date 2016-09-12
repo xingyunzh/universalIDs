@@ -39,9 +39,10 @@ console.log("querys:".QueryString);
 
 if(QueryString.state !== undefined){
 	if(QueryString.code !== undefined){
-		$.get(
-			"http://www.xingyunzh.com:5566/clduser/login/wechat?code=" + QueryString.code,
-			function(data){
+		$.post(
+			"http://www.xingyunzh.com:5566/clduser/login/wechat",{
+				code:QueryString.code
+			},function(data){
 				console.log('data:',data);
 			})
 		.fail(function(err){
