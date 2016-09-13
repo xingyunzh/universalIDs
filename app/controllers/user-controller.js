@@ -25,7 +25,8 @@ exports.testingMail = function(req,res){
 }
 
 exports.loginByWechat = function(req,res){
-	console.log('body',req.body);
+
+	var code = req.body.code;
 
 	if (req.body.code == undefined) {
 		res.send(util.wrapBody('Invalid Parameter','E'));
@@ -43,7 +44,7 @@ exports.loginByWechat = function(req,res){
 	const STATE_CREATE_TOKEN = 8;
 	const STATE_SEND_RESPONSE = 0;
 
-	var code = req.body.code;
+	
 	var accessToken = null;
 	var openId = null;
 	var userInfo = null;
@@ -176,12 +177,18 @@ exports.loginByWechat = function(req,res){
 
 exports.getUserProfile = function(req,res){
 
+	var userId = req.token.userId;
+
+	if (userId == undefined) {
+		res.send(util.wrapBody('Invalid Parameter','E'));
+		return;
+	}
+
 	const STATE_GET_USER_PROFILE = 2;
 	const STATE_GET_WECHAT_PROFILE = 3;
 	const STATE_BUILD_FULL_PROFILE = 4;
 	const STATE_SEND_RESPONSE = 0;
 
-	var tokenObject = req.token;
 	var latestUser = null;
 	var latestUserWechat = null;
 	var latestFullProfile = null;
@@ -203,7 +210,7 @@ exports.getUserProfile = function(req,res){
 				case STATE_GET_USER_PROFILE:
 
 					userModel
-					.findById(tokenObject.userId)
+					.findById(userId)
 					.exec(function(err,lu){
 						latestUser = lu;
 						console.log('lu',lu);
@@ -213,7 +220,7 @@ exports.getUserProfile = function(req,res){
 				case STATE_GET_WECHAT_PROFILE:
 
 					userWechatModel
-					.findOne({user:tokenObject.userId})
+					.findOne({user:userId})
 					.exec(function(err,luw){
 						latestUserWechat = luw;
 						stateMachine(err,STATE_BUILD_FULL_PROFILE);
@@ -238,6 +245,11 @@ exports.getUserProfile = function(req,res){
 exports.loginByEmail = function(req,res){
 	var email = req.body.email;
 	var password = req.body.password;
+
+	if (email == undefined || password == undefined) {
+		res.send(util.wrapBody('Invalid Parameter','E'));
+		return;
+	}
 
 	const STATE_VERIFY_USER = 1;
 	const STATE_CREATE_TOKEN = 2;
@@ -310,6 +322,11 @@ exports.createUser = function(req,res){
 
 	var email = req.body.email;
 	var password = req.body.password;
+
+	if (email == undefined || password == undefined) {
+		res.send(util.wrapBody('Invalid Parameter','E'));
+		return;
+	}
 
 	const STATE_CHECK_USER_EXIST = 1;
 	const STATE_CREATE_USER = 2;
@@ -394,11 +411,16 @@ exports.createUser = function(req,res){
 }
 
 exports.checkEmailActivated = function(req,res){
+	var userId = req.token.userId;
+
+	if (userId == undefined) {
+		res.send(util.wrapBody('Invalid Parameter','E'));
+		return;
+	}
 
 	const STATE_CHECK_ACTIVATED = 1;
 	const STATE_SEND_RESPONSE = 0;
 
-	var tokenObject = req.token;
 	var latestRegistration = null;
 
 	stateMachine(null,STATE_CHECK_ACTIVATED);
@@ -413,7 +435,7 @@ exports.checkEmailActivated = function(req,res){
 			switch(toState){
 				case STATE_CHECK_ACTIVATED:
 					registrationModel
-					.findOne({user:tokenObject.userId})
+					.findOne({user:userId})
 					.exec(function(err,lr){
 						latestRegistration = lr;
 						stateMachine(err,STATE_SEND_RESPONSE);
@@ -432,11 +454,16 @@ exports.checkEmailActivated = function(req,res){
 
 exports.activateEmail = function(req,res){
 	var activateCode = req.body.activateCode;
+	var userId = req.token.userId;
+
+	if (userId == undefined || activateCode == undefined) {
+		res.send(util.wrapBody('Invalid Parameter','E'));
+		return;
+	}
 
 	const STATE_ACTIVATE_USER = 1;
 	const STATE_SEND_RESPONSE = 0;
 
-	var tokenObject = req.token;
 	var latestRegistration = null;
 
 	stateMachine(null,STATE_ACTIVATE_USER);
@@ -453,7 +480,7 @@ exports.activateEmail = function(req,res){
 				case STATE_ACTIVATE_USER:
 					registrationModel
 					.findOneAndUpdate({
-						user:tokenObject.userId,
+						user:userId,
 						activateCode:activateCode
 					},{
 						isActivated:true
@@ -482,12 +509,17 @@ exports.activateEmail = function(req,res){
 
 exports.updateProfile = function(req,res){
 	var profile = req.body.profile;
+	var userId = req.token.userId;
+
+	if (userId == undefined || profile == undefined) {
+		res.send(util.wrapBody('Invalid Parameter','E'));
+		return;
+	}
 
 	const STATE_CHECK_ACTIVATED = 1;
 	const STATE_UPDATE_USER = 2;
 	const STATE_SEND_RESPONSE = 0;
 
-	var tokenObject = req.token;
 	var latestRegistration = null;
 	var latestUser = null;
 
@@ -504,7 +536,7 @@ exports.updateProfile = function(req,res){
 			switch(toState){
 				case STATE_CHECK_ACTIVATED:
 					registrationModel
-					.findOne({user:tokenObject.userId})
+					.findOne({user:userId})
 					.exec(function(err,lr){
 						latestRegistration = lr;
 						stateMachine(err,STATE_SEND_RESPONSE);
@@ -546,6 +578,14 @@ exports.updateProfile = function(req,res){
 }
 
 exports.wechatBinding = function(req,res){
+
+	var code = req.body.code;
+	var userId = req.token.userId
+
+	if (userId == undefined || code == undefined) {
+		res.send(util.wrapBody('Invalid Parameter','E'));
+		return;
+	}
 	
 	//States declaration
 	const STATE_GET_TOKEN = 1;
@@ -553,8 +593,6 @@ exports.wechatBinding = function(req,res){
 	const STATE_UPDATE_USER_WECHAT = 3;
 	const STATE_SEND_RESPONSE = 0;
 
-	var code = req.body.code;
-	var userId = req.token.userId
 	var accessToken = null;
 	var openId = null;
 	var userInfo = null;
@@ -622,6 +660,11 @@ exports.updatePassword = function(req,res){
 	var userId = req.token.userId;
 	var password = req.body.password;
 
+	if (userId == undefined || password == undefined) {
+		res.send(util.wrapBody('Invalid Parameter','E'));
+		return;
+	}
+
 	var latestUser = null;
 
 	var STATE_UPDATE_PASSWORD = 1;
@@ -668,7 +711,11 @@ exports.updatePassword = function(req,res){
 
 exports.resetPassword = function(req,res){
 	var userId = req.token.userId;
-	var password = req.body.password;
+
+	if (userId == undefined) {
+		res.send(util.wrapBody('Invalid Parameter','E'));
+		return;
+	}
 
 	var latestUser = null;
 	var tempPassword = null;
@@ -721,6 +768,11 @@ exports.updateEmail = function(req,res){
 	var email = req.body.email;
 	var password = req.body.password;
 	var userId = req.token.userId;
+
+	if (userId == undefined || password == undefined || email == undefined) {
+		res.send(util.wrapBody('Invalid Parameter','E'));
+		return;
+	}
 
 	const STATE_CHECK_EMAIL_USED = 1;
 	const STATE_UPDATE_USER = 2;
