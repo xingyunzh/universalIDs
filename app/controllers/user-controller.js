@@ -314,6 +314,7 @@ exports.createUser = function(req,res){
 	const STATE_CHECK_USER_EXIST = 1;
 	const STATE_CREATE_USER = 2;
 	const STATE_CREATE_REGISTRATION = 3;
+	const STATE_SEND_ACTIVATE_EMAIL = 4;
 	const STATE_SEND_RESPONSE = 0;
 
 	var latestUser = null;
@@ -369,8 +370,13 @@ exports.createUser = function(req,res){
 					newRegistration
 					.save(function(err,lr){
 						latestRegistration = lr;
-						stateMachine(err,STATE_SEND_RESPONSE);
+						stateMachine(err,STATE_SEND_ACTIVATE_EMAIL);
 					});
+				break;
+				case STATE_SEND_ACTIVATE_EMAIL:
+					mailService.sendActivateCode(email,latestRegistration.activateCode,function(err){
+						stateMachine(err,STATE_SEND_RESPONSE);
+					})
 				break;
 				case STATE_SEND_RESPONSE:
 					if (isUserExist > 0) {
@@ -719,6 +725,7 @@ exports.updateEmail = function(req,res){
 	const STATE_CHECK_EMAIL_USED = 1;
 	const STATE_UPDATE_USER = 2;
 	const STATE_UPDATE_REGISTRATION = 3;
+	const STATE_SEND_ACTIVATE_EMAIL = 4;
 	const STATE_SEND_RESPONSE = 0;
 
 	var isUserExist = 0;
@@ -771,6 +778,11 @@ exports.updateEmail = function(req,res){
 
 					},function(err,lr){
 						latestRegistration = lr;
+						stateMachine(err,STATE_SEND_ACTIVATE_EMAIL);
+					})
+				break;
+				case STATE_SEND_ACTIVATE_EMAIL:
+					mailService.sendActivateCode(email,latestRegistration.activateCode,function(err){
 						stateMachine(err,STATE_SEND_RESPONSE);
 					})
 				break;
