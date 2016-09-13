@@ -399,7 +399,7 @@ exports.createUser = function(req,res){
 					if (isUserExist > 0) {
 						res.send(util.wrapBody('Email is used','E'));
 					}else{
-						res.send(util.wrapBody({activateCode:latestRegistration.activateCode}));
+						res.send(util.wrapBody({isSuccessful:true}));
 					}
 				break;
 				default:
@@ -721,6 +721,7 @@ exports.resetPassword = function(req,res){
 	var tempPassword = null;
 
 	var STATE_UPDATE_PASSWORD = 1;
+	var STATE_SEND_EMAIL = 2;
 	var STATE_SEND_RESPONSE = 0;
 
 	stateMachine(null,STATE_UPDATE_PASSWORD);
@@ -744,6 +745,11 @@ exports.resetPassword = function(req,res){
 						upsert:false
 					},function(err,lu){
 						latestUser = lu;
+						stateMachine(err,STATE_SEND_EMAIL);
+					})
+				break;
+				case STATE_SEND_EMAIL:
+					mailService.sendTempPassword(latestUser.email,tempPassword,function(err){
 						stateMachine(err,STATE_SEND_RESPONSE);
 					})
 				break;
@@ -751,7 +757,7 @@ exports.resetPassword = function(req,res){
 					if (latestUser != null) {
 						res.send(util.wrapBody({isSuccessful:true}));
 					}else{
-						res.send(util.wrapBody({isSuccessful:false,tempPassword:tempPassword}));
+						res.send(util.wrapBody({isSuccessful:false}));
 					}
 				break;
 				default:
@@ -842,7 +848,7 @@ exports.updateEmail = function(req,res){
 					if (isUserExist > 0) {
 						res.send(util.wrapBody('Email is used','E'));
 					}else{
-						res.send(util.wrapBody({activateCode:latestRegistration.activateCode}));
+						res.send(util.wrapBody({isSuccessful:true}));
 					}
 				break;
 				default:
