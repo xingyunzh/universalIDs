@@ -26,7 +26,7 @@ router.post('/api/update/email',userController.updateEmail);
 
 router.post('/api/update/password',userController.updatePassword);
 
-router.post('/api/reset/password',userController.resetPassword);
+router.post('/reset/password',userController.resetPassword);
 
 router.get('/list',userController.getAllUsers)
 
