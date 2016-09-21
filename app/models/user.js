@@ -5,7 +5,7 @@ var userSchema = Schema({
 	//username:String,
 
 	password:{
-		type:String,
+		type:String
 	},
 
 	nickname:String,
@@ -17,7 +17,7 @@ var userSchema = Schema({
 
 	email:{
 		type:String,
-
+		index:true
 	},
 
 	lastLoginDate:Date

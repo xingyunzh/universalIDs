@@ -25,10 +25,9 @@ exports.testingMail = function(req,res){
 }
 
 exports.loginByWechat = function(req,res){
-
-	var code = req.body.code;
-
-	if (req.body.code == undefined) {
+	if (checkParameter(req.body,['code'])) {
+		var code = req.body.code;
+	}else{
 		res.send(util.wrapBody('Invalid Parameter','E'));
 		return;
 	}
@@ -710,9 +709,9 @@ exports.updatePassword = function(req,res){
 }
 
 exports.resetPassword = function(req,res){
-	var userId = req.token.userId;
+	var email = req.body.email
 
-	if (userId == undefined) {
+	if (email == undefined) {
 		res.send(util.wrapBody('Invalid Parameter','E'));
 		return;
 	}
@@ -738,7 +737,7 @@ exports.resetPassword = function(req,res){
 					tempPassword = stringHelper.randomString(6,'all');
 					userModel
 					.findOneAndUpdate({
-						_id:userId
+						email:email
 					},{
 						password:encryptPassword(tempPassword)
 					},{
@@ -870,6 +869,15 @@ function encryptPassword(rawPassword){
 	sha1.update(rawPassword);
 
 	return sha1.digest('hex');
+}
+
+function checkParameter(body,params){
+	for(var param in params){
+		if (body[param] == undefined) {
+			return false;
+		}
+	}
+	return true;
 }
 
 
