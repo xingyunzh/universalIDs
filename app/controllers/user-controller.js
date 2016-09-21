@@ -167,7 +167,7 @@ exports.loginByWechat = function(req,res){
 						authenticated:true,
 						token:jwToken,
 						nickname:latestUser.nickname,
-						userId:latestUser._id;
+						userId:latestUser._id
 					};
 
 					res.send(util.wrapBody(responseBody));
