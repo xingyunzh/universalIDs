@@ -163,9 +163,14 @@ exports.loginByWechat = function(req,res){
 
 				break;
 				case STATE_SEND_RESPONSE:
-					var result = {authenticated:true,token:jwToken,nickname:latestUser.nickname};
+					var responseBody = {
+						authenticated:true,
+						token:jwToken,
+						nickname:latestUser.nickname,
+						userId:latestUser._id;
+					};
 
-					res.send(util.wrapBody(result));
+					res.send(util.wrapBody(responseBody));
 				break;
 				default: res.send(util.wrapBody('Internal Error','E'));
 			}
@@ -295,15 +300,20 @@ exports.loginByEmail = function(req,res){
 					}
 				break;
 				case STATE_SEND_RESPONSE:
-					var response = {};
+					var responseBody = {};
 					if (authenticated) {
-						res.send(util.wrapBody({
+						responseBody = {
 							authenticated:true,
 							token:jwToken,
-							nickname:latestUser.nickname
-						}));
+							nickname:latestUser.nickname,
+							userId:latestUser._id
+						};
+						res.send(util.wrapBody(responseBody));
 					}else{
-						res.send(util.wrapBody({authenticated:false,nickname:latestUser.nickname}));
+						responseBody = {
+							authenticated:false
+						};
+						res.send(util.wrapBody(responseBody));
 					}
 					
 				break;
