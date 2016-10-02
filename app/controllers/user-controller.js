@@ -2,7 +2,7 @@ var wechat = require('../util/wechat-auth.js');
 var util = require('../util/shared/util.js');
 var crypto = require('crypto');
 var stringHelper = require('../util/shared/stringHelper.js');
-var tokenHelper = require('../util/shared/tokenHelper.js');
+var tokenHelper = require('../authenticate/tokenHelper.js');
 
 var userModel = require('../models/user');
 var userWechatModel = require('../models/user-wechat');
