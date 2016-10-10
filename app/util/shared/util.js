@@ -5,6 +5,16 @@
 }(this, function () { 
 	var util = {};
 
+	util.checkParam = function(container,params,callback){
+		for (var i = params.length - 1; i >= 0; i--) {
+			if (!container[params[i]]) {
+				var err = new Error('Invalid Parameter');
+				callback(err);
+				return;
+			}		
+		}
+		callback(null);
+	}
 		//convenient methods to contruct uniformat response
 	util.wrapBody = function(obj, statusCode){
 		var statusCode = arguments[1] ? arguments[1] : 'S';
