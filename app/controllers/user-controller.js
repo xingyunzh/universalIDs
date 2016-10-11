@@ -25,12 +25,18 @@ exports.testingMail = function(req,res){
 }
 
 exports.loginByWechat = function(req,res){
-	if (util.checkParam(req.body,['code'])) {
-		var code = req.body.code;
-	}else{
-		res.send(util.wrapBody('Invalid Parameter','E'));
-		return;
-	}
+	var code = '';
+	util.checkParam(req.body,['code'],function(err){
+		if (err) {
+			console.log(err);
+			res.send(util.wrapBody('Invalid Parameter','E'));
+			return;
+		} else {
+			code = req.body.code;
+		}
+		
+	});
+		
 
 	//States declaration
 	const STATE_GET_WECHAT_TOKEN = 1;
