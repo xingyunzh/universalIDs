@@ -2,7 +2,7 @@ var wechat = require('../util/wechat-auth.js');
 var util = require('../util/shared/util.js');
 var crypto = require('crypto');
 var stringHelper = require('../util/shared/stringHelper.js');
-var tokenHelper = require('../util/shared/tokenHelper.js');
+var tokenHelper = require('../authenticate/tokenHelper.js');
 
 var userModel = require('../models/user');
 var userWechatModel = require('../models/user-wechat');
@@ -25,12 +25,18 @@ exports.testingMail = function(req,res){
 }
 
 exports.loginByWechat = function(req,res){
-	if (checkParameter(req.body,['code'])) {
-		var code = req.body.code;
-	}else{
-		res.send(util.wrapBody('Invalid Parameter','E'));
-		return;
-	}
+	var code = '';
+	util.checkParam(req.body,['code'],function(err){
+		if (err) {
+			console.log(err);
+			res.send(util.wrapBody('Invalid Parameter','E'));
+			return;
+		} else {
+			code = req.body.code;
+		}
+		
+	});
+		
 
 	//States declaration
 	const STATE_GET_WECHAT_TOKEN = 1;
@@ -881,14 +887,6 @@ function encryptPassword(rawPassword){
 	return sha1.digest('hex');
 }
 
-function checkParameter(body,params){
-	for(var param in params){
-		if (body[param] == undefined) {
-			return false;
-		}
-	}
-	return true;
-}
 
 
 

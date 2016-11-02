@@ -1,4 +1,4 @@
-var tokenHelper = require('../util/shared/tokenHelper.js');
+var tokenHelper = require('../authenticate/tokenHelper.js');
 var util = require('../util/shared/util.js');
 
 
