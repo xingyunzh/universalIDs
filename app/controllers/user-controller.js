@@ -169,11 +169,11 @@ exports.loginByWechat = function(req,res){
 
 				break;
 				case STATE_SEND_RESPONSE:
+					var user = new fullProfile(latestUser,latestUserWechat);
+
 					var responseBody = {
-						authenticated:true,
 						token:jwToken,
-						nickname:latestUser.nickname,
-						userId:latestUser._id
+						user:user
 					};
 
 					res.send(util.wrapBody(responseBody));
@@ -306,18 +306,19 @@ exports.loginByEmail = function(req,res){
 					}
 				break;
 				case STATE_SEND_RESPONSE:
+					var user = new fullProfile(latestUser,null);
+
 					var responseBody = {};
+					
 					if (authenticated) {
 						responseBody = {
-							authenticated:true,
 							token:jwToken,
-							nickname:latestUser.nickname,
-							userId:latestUser._id
+							user:user
 						};
 						res.send(util.wrapBody(responseBody));
 					}else{
 						responseBody = {
-							authenticated:false
+							token:null
 						};
 						res.send(util.wrapBody(responseBody));
 					}
