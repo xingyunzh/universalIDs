@@ -6,7 +6,7 @@
 	var util = {};
 
 	util.checkParam = function(container,params,callback){
-		console.log('container:',container);
+		//console.log('container:',container);
 		for (var i = params.length - 1; i >= 0; i--) {
 			if (!container[params[i]]) {
 				var err = new Error('Invalid Parameter');

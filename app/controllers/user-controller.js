@@ -2,7 +2,7 @@ var wechat = require('../util/wechat-auth.js');
 var util = require('../util/shared/util.js');
 var crypto = require('crypto');
 var stringHelper = require('../util/shared/stringHelper.js');
-var tokenHelper = require('../authenticate/tokenHelper.js');
+var authenticator = require('../authenticate/authenticator.js');
 
 var userModel = require('../models/user');
 var userWechatModel = require('../models/user-wechat');
@@ -126,13 +126,13 @@ exports.loginByWechat = function(req,res){
 					},function(err,lu){
 						latestUser = lu;
 						stateMachine(err,STATE_CREATE_TOKEN);
-					})
+					});
 				break;
 				case STATE_CREATE_USER:
 					//if the user-wechat does not exist,create user
 					var newUser = new userModel();
 					newUser.nickname = userInfo.nickname;
-					newUser.password = encryptPassword(stringHelper.randomString(6,'all'));
+					newUser.password = '';//encryptPassword(stringHelper.randomString(6,'all'));
 					//newUser.createdDate = new Date();
 					newUser.lastLoginDate = new Date();
 
@@ -162,7 +162,7 @@ exports.loginByWechat = function(req,res){
 
 				break;
 				case STATE_CREATE_TOKEN:
-					tokenHelper.create(latestUser._id,function(err,jt){
+					authenticator.create(latestUser._id,function(err,jt){
 						jwToken = jt;
 						stateMachine(err,STATE_SEND_RESPONSE);
 					})
@@ -292,17 +292,17 @@ exports.loginByEmail = function(req,res){
 					}).exec(function(err,lu){
 						latestUser = lu;
 						stateMachine(err,STATE_CREATE_TOKEN);
-					})
+					});
 				break;
 				case STATE_CREATE_TOKEN:
 					if (latestUser == null) {
 						stateMachine(null,STATE_SEND_RESPONSE);
 					}else{
-						tokenHelper.create(latestUser._id,function(err,jt){
+						authenticator.create(latestUser._id,function(err,jt){
 								jwToken = jt;
 								authenticated = true;
 								stateMachine(err,STATE_SEND_RESPONSE);
-						})
+						});
 					}
 				break;
 				case STATE_SEND_RESPONSE:
@@ -336,13 +336,15 @@ exports.loginByEmail = function(req,res){
 exports.createUser = function(req,res){
 	console.log('inside createUser',req.body);
 
+	util.checkParam(req.body,['email','password'],function(err){
+			if (err) {
+				res.send(util.wrapBody('Invalid Parameter','E'));
+				return;
+			}
+	});
+
 	var email = req.body.email;
 	var password = req.body.password;
-
-	if (email == undefined || password == undefined) {
-		res.send(util.wrapBody('Invalid Parameter','E'));
-		return;
-	}
 
 	const STATE_CHECK_USER_EXIST = 1;
 	const STATE_CREATE_USER = 2;
@@ -369,12 +371,12 @@ exports.createUser = function(req,res){
 				case STATE_CHECK_USER_EXIST:
 
 					userModel
-					.findOne({email:email})
+					.find({email:email})
 					.count()
 					.exec(function(err,result){
 						isUserExist = result;
 						stateMachine(err,STATE_CREATE_USER);
-					})
+					});
 				break;
 				case STATE_CREATE_USER:
 					if (isUserExist > 0) {
@@ -504,6 +506,7 @@ exports.activateEmail = function(req,res){
 						new:true
 					},function(err,lr){
 						latestRegistration = lr;
+						console.log('lr',lr);
 						stateMachine(err,STATE_SEND_RESPONSE);
 					})
 
@@ -527,7 +530,7 @@ exports.updateProfile = function(req,res){
 	var profile = req.body.profile;
 	var userId = req.token.userId;
 
-	if (userId == undefined || profile == undefined) {
+	if (userId === undefined || profile === undefined) {
 		res.send(util.wrapBody('Invalid Parameter','E'));
 		return;
 	}
@@ -562,7 +565,7 @@ exports.updateProfile = function(req,res){
 					if (latestRegistration != null && latestRegistration.isActivated) {
 						userModel
 						.findOneAndUpdate({
-							_id:tokenObject.userId
+							_id:userId
 						},{
 							nickname:profile.nickname
 						},{
@@ -572,7 +575,7 @@ exports.updateProfile = function(req,res){
 							stateMachine(err,STATE_SEND_RESPONSE);
 						});
 					}else{
-						stateMachine(err,STATE_SEND_RESPONSE);
+						stateMachine(null,STATE_SEND_RESPONSE);
 					}
 
 				break;
@@ -876,7 +879,7 @@ exports.updateEmail = function(req,res){
 }
 
 exports.getAllUsers = function(req,res){
-	
+	res.send('OK');
 }
 
 function encryptPassword(rawPassword){
