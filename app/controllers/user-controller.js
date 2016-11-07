@@ -165,7 +165,7 @@ exports.loginByWechat = function(req,res){
 					authenticator.create(latestUser._id,function(err,jt){
 						jwToken = jt;
 						stateMachine(err,STATE_SEND_RESPONSE);
-					})
+					});
 
 				break;
 				case STATE_SEND_RESPONSE:
@@ -331,16 +331,53 @@ exports.loginByEmail = function(req,res){
 		}
 	}
 
-}
+};
+
+exports.addTestUser = function(req,res){
+	util.checkParam(req.body,['email','password'],function(err){
+		if (err) {
+			res.send(util.wrapBody('Invalid Parameter','E'));
+			return;
+		}
+	});
+
+	var newUser = new userModel();
+	newUser.email = req.body.email;
+	newUser.password = encryptPassword('zaq12wsx');
+
+	newUser
+	.save(function(err,lu){
+		if (err) {
+			console.log(err);
+			res.send('Fail');
+		}else{
+			var newRegistration = new registrationModel();
+			newRegistration.user = lu._id;
+			newRegistration.activateCode = stringHelper.randomString(4,['lower','digit']);
+			newRegistration.isActivated = true;
+
+			newRegistration
+			.save(function(err,lr){
+				if (err) {
+					console.log(err);
+					res.send('Fail');
+				}else{
+					res.send('OK');
+				}
+			});
+		}
+		
+	});
+};
 
 exports.createUser = function(req,res){
 	console.log('inside createUser',req.body);
 
 	util.checkParam(req.body,['email','password'],function(err){
-			if (err) {
-				res.send(util.wrapBody('Invalid Parameter','E'));
-				return;
-			}
+		if (err) {
+			res.send(util.wrapBody('Invalid Parameter','E'));
+			return;
+		}
 	});
 
 	var email = req.body.email;
@@ -350,6 +387,7 @@ exports.createUser = function(req,res){
 	const STATE_CREATE_USER = 2;
 	const STATE_CREATE_REGISTRATION = 3;
 	const STATE_SEND_ACTIVATE_EMAIL = 4;
+	const STATE_CREATE_TOKEN = 5;
 	const STATE_SEND_RESPONSE = 0;
 
 	var latestUser = null;
@@ -410,14 +448,20 @@ exports.createUser = function(req,res){
 				break;
 				case STATE_SEND_ACTIVATE_EMAIL:
 					mailService.sendActivateCode(email,latestRegistration.activateCode,function(err){
+						stateMachine(err,STATE_CREATE_TOKEN);
+					});
+				break;
+				case STATE_CREATE_TOKEN:
+					authenticator.create(latestUser._id,function(err,jt){
+						jwToken = jt;
 						stateMachine(err,STATE_SEND_RESPONSE);
-					})
+					});
 				break;
 				case STATE_SEND_RESPONSE:
 					if (isUserExist > 0) {
-						res.send(util.wrapBody('Email is used','E'));
+						res.send(util.wrapBody({token:null,msg:"Email is used"}));
 					}else{
-						res.send(util.wrapBody({isSuccessful:true}));
+						res.send(util.wrapBody({token:jwToken}));
 					}
 				break;
 				default:
