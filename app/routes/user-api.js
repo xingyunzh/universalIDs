@@ -10,6 +10,8 @@ router.use('/api',authenticator.authenticate);
 
 router.get('/test/mail',userController.testingMail);
 
+router.post('/test/user',userController.addTestUser);
+
 router.post('/register',userController.createUser);
 
 router.post('/login/wechat',userController.loginByWechat);
