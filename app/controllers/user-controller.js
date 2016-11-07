@@ -334,7 +334,7 @@ exports.loginByEmail = function(req,res){
 };
 
 exports.addTestUser = function(req,res){
-	util.checkParam(req.body,['email','password'],function(err){
+	util.checkParam(req.body,['email'],function(err){
 		if (err) {
 			res.send(util.wrapBody('Invalid Parameter','E'));
 			return;
