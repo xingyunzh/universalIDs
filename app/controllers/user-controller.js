@@ -334,7 +334,7 @@ exports.loginByEmail = function(req,res){
 };
 
 exports.addTestUser = function(req,res){
-	util.checkParam(req.body,['email','password'],function(err){
+	util.checkParam(req.body,['email'],function(err){
 		if (err) {
 			res.send(util.wrapBody('Invalid Parameter','E'));
 			return;
@@ -602,7 +602,7 @@ exports.updateProfile = function(req,res){
 					.findOne({user:userId})
 					.exec(function(err,lr){
 						latestRegistration = lr;
-						stateMachine(err,STATE_SEND_RESPONSE);
+						stateMachine(err,STATE_UPDATE_USER);
 					});
 				break;
 				case STATE_UPDATE_USER:
