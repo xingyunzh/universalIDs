@@ -602,7 +602,7 @@ exports.updateProfile = function(req,res){
 					.findOne({user:userId})
 					.exec(function(err,lr){
 						latestRegistration = lr;
-						stateMachine(err,STATE_SEND_RESPONSE);
+						stateMachine(err,STATE_UPDATE_USER);
 					});
 				break;
 				case STATE_UPDATE_USER:
