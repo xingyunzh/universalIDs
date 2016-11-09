@@ -256,7 +256,7 @@ exports.loginByEmail = function(req,res){
 	var email = req.body.email;
 	var password = req.body.password;
 
-	if (email == undefined || password == undefined) {
+	if (email === undefined || password === undefined) {
 		res.send(util.wrapBody('Invalid Parameter','E'));
 		return;
 	}
@@ -613,6 +613,7 @@ exports.updateProfile = function(req,res){
 						},{
 							nickname:profile.nickname
 						},{
+							upsert:false,
 							new:true
 						},function(err,lu){
 							latestUser = lu;

@@ -8,7 +8,7 @@ var bodyParser = require('body-parser');
 
 var apiRouter = require('./routes/api-router.js');
 
-var mongoDBUrl = "mongodb://127.0.0.1:27017/universalids";
+var mongoDBUrl = "mongodb://xyzh:xyzh@127.0.0.1:27017/universalids";
 mongoose.connect(mongoDBUrl, function(err){
   if (err) {
     console.log("mongo db connect fail!" + err);
