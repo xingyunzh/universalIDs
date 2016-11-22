@@ -1,335 +1,129 @@
-var wechat = require('../util/wechat-auth.js');
-var util = require('../util/shared/util.js');
+var wechat = require('../util/wechat-auth');
+var util = require('../util/util');
 var crypto = require('crypto');
-var stringHelper = require('../util/shared/stringHelper.js');
-var authenticator = require('../authenticate/authenticator.js');
+var stringHelper = require('../util/shared/stringHelper');
+var authenticator = require('../authenticate/authenticator');
 
-var userModel = require('../models/user');
-var userWechatModel = require('../models/user-wechat');
-var fullProfile = require('../models/full-profile');
-var registrationModel = require('../models/registration');
+var userRepository = require('../repositories/userRepository');
+var registrationRepository = require('../repositories/registrationRepository');
+var mailService = require('../repositories/mailRepository');
 
-var mailService = require('./services/mail-service.js');
-
-
-exports.testingMail = function(req,res){
-	var address = req.query.addr;
-	mailService.sendTestingMail(address,function(err,result){
-		if(err){
-	        console.log(err);
-	    }else{
-	        console.log('Message sent: ' + result.response);
-	    }
-	    res.send("OK");
-	});
-}
+var q = require('q');
 
 exports.loginByWechat = function(req,res){
-	var code = '';
-	util.checkParam(req.body,['code'],function(err){
-		if (err) {
-			console.log(err);
-			res.send(util.wrapBody('Invalid Parameter','E'));
-			return;
-		} else {
-			code = req.body.code;
-		}
-		
-	});
-		
+	if (!util.checkParam(req.body,['code'])) {
+		res.send(util.wrapBody('Invalid Parameter','E'));
+	}else{
+		var code = req.body.code;
+		var deferred = q.defer();
 
-	//States declaration
-	const STATE_GET_WECHAT_TOKEN = 1;
-	const STATE_GET_USER_INFO = 2;
-	const STATE_CHECK_USER_EXIST = 3;
-	const STATE_UPDATE_USER_WECHAT = 4;
-	const STATE_UPDATE_USER = 5;
-	const STATE_CREATE_USER = 6;
-	const STATE_CREATE_USER_WECHAT = 7;
-	const STATE_CREATE_TOKEN = 8;
-	const STATE_SEND_RESPONSE = 0;
+		var user = null;
 
-	
-	var accessToken = null;
-	var openId = null;
-	var userInfo = null;
-	var latestUserWechat = null;
-	var jwToken = null;
-	var latestUser = null;
+		wechat.getAccessToken(code,function(err,at,oi){
+			if (err) {
+				deferred.reject(err);
+			}else{
+				deferred.resolve(oi);
+			}
+		});
 
-	stateMachine(null,STATE_GET_WECHAT_TOKEN);
+		deferred.promise.then(function getWechatInfo(openId){
+			var d = q.defer();
 
-	function stateMachine(err,toState){
-		console.log('state:',toState);
+			wechat.getUserInfo(openId,function(err,userInfo){
+				if (err) {
+					d.reject(err);
+				}else{
+					d.resolve(userInfo);
+				}
+			});
 
-		if (err) {
-			
-			console.log('error:',err);
-			res.send(util.wrapBody('Internal Error','E'));
-		}else{
-
-			switch(toState){
-				case STATE_GET_WECHAT_TOKEN: 
-					//get accessToken&openID by code
-					wechat.getAccessToken(code,function(err,at,oi){
-						console.log('token',at);
-						console.log('openId',oi);
-						accessToken = at;
-						openId = oi;
-						stateMachine(err,STATE_GET_USER_INFO);
-					});
-				break;
-				case STATE_GET_USER_INFO:
-					//get user info from wechat
-					wechat.getUserInfo(openId,function(err,ui){
-						console.log('wechat info',ui);
-						userInfo = ui;
-						stateMachine(err,STATE_CHECK_USER_EXIST);
-					});
-				break;
-				case STATE_CHECK_USER_EXIST:
-
-					userWechatModel
-					.findOne({unionID:userInfo.unionID})
-					//.populate('user')
-					.exec(function(err,result){
-						if(result == null){
-							stateMachine(err,STATE_CREATE_USER);
-						}else{
-							latestUserWechat = result;
-							stateMachine(err,STATE_UPDATE_USER_WECHAT);
-						}
-					});
-				break;
-				case STATE_UPDATE_USER_WECHAT:
-					//if the user-wechat exist
-					userWechatModel
-					.findOneAndUpdate({
-						user:latestUserWechat.user
-					},userInfo,{
-						new:true
-					})
-					//.populate('user')
-					.exec(function(err,luw){
-						latestUserWechat = luw;
-						stateMachine(err,STATE_UPDATE_USER);
-					});
-				break;
-				case STATE_UPDATE_USER:
-					userModel
-					.findOneAndUpdate({
-						_id:latestUserWechat.user
-					},{
+			return d.promise;
+		}).then(function findOrCreateUser(userInfo){
+			return userRepository.findOne({
+				wechatUnionId:userInfo.unionID
+			}).then(function(oldUser){
+				if (oldUser) {
+					return userRepository.updateById(oldUser._id,{
 						lastLoginDate:new Date()
-					},{
-						new:true
-					},function(err,lu){
-						latestUser = lu;
-						stateMachine(err,STATE_CREATE_TOKEN);
 					});
-				break;
-				case STATE_CREATE_USER:
-					//if the user-wechat does not exist,create user
-					var newUser = new userModel();
-					newUser.nickname = userInfo.nickname;
-					newUser.password = '';//encryptPassword(stringHelper.randomString(6,'all'));
-					//newUser.createdDate = new Date();
-					newUser.lastLoginDate = new Date();
-
-					newUser
-					.save(function(err,result){
-						latestUser = result;
-						stateMachine(err,STATE_CREATE_USER_WECHAT);
-					});
-				break;
-				case STATE_CREATE_USER_WECHAT:
-
-					var newUserWechat = new userWechatModel();
-					newUserWechat.user = latestUser._id;
-					newUserWechat.nickname = userInfo.nickname;
-					newUserWechat.sex = userInfo.sex;
-					newUserWechat.province = userInfo.province;
-					newUserWechat.city = userInfo.city;
-					newUserWechat.country = userInfo.country;
-					newUserWechat.privilege = userInfo.privilege;
-					newUserWechat.unionID = userInfo.unionID;
-
-					newUserWechat
-					.save(function(err,luw){
-						latestUserWechat = luw;
-						stateMachine(err,STATE_CREATE_TOKEN);
-					});
-
-				break;
-				case STATE_CREATE_TOKEN:
-					authenticator.create(latestUser._id,function(err,jt){
-						jwToken = jt;
-						stateMachine(err,STATE_SEND_RESPONSE);
-					});
-
-				break;
-				case STATE_SEND_RESPONSE:
-					var user = new fullProfile(latestUser,latestUserWechat);
-
-					var responseBody = {
-						token:jwToken,
-						user:user
+				}else{
+					//save head img
+					var newUser = {
+						nickname:userInfo.nickname,
+						password:'',
+						gender:userInfo.sex,
+						city:userInfo.city,
+						country:userInfo.country,
+						headImgUrl:userInfo.headImgUrl
 					};
 
-					res.send(util.wrapBody(responseBody));
-				break;
-				default: res.send(util.wrapBody('Internal Error','E'));
-			}
-		}
-	}
+					return userRepository.create(newUser);
+				}
+			});
+		}).then(function createToken(newUser){
+			user = newUser;
+			return authenticator.create(latestUser._id);
+		}).then(function sendResponse(token){
+			res.setHeader('set-token',token);
 
+			var responseBody = {
+				token:token,
+				user:user
+			};
+
+			res.send(util.wrapBody(responseBody));
+		});
+	}
 };
 
 exports.getUserProfile = function(req,res){
+	var userId = req.params.id;
 
-	var userId = req.token.userId;
-
-	if (userId == undefined) {
-		res.send(util.wrapBody('Invalid Parameter','E'));
-		return;
-	}
-
-	const STATE_GET_USER_PROFILE = 2;
-	const STATE_GET_WECHAT_PROFILE = 3;
-	const STATE_BUILD_FULL_PROFILE = 4;
-	const STATE_SEND_RESPONSE = 0;
-
-	var latestUser = null;
-	var latestUserWechat = null;
-	var latestFullProfile = null;
-
-	stateMachine(null,STATE_GET_USER_PROFILE);
-
-
-	function stateMachine(err,toState){
-		console.log('state:',toState);
-
-		if (err) {
-			
-			console.log('error:',err);
-			res.send(util.wrapBody('Internal Error','E'));
-
-		}else{
-
-			switch(toState){
-				case STATE_GET_USER_PROFILE:
-
-					userModel
-					.findById(userId)
-					.exec(function(err,lu){
-						latestUser = lu;
-						console.log('lu',lu);
-						stateMachine(err,STATE_GET_WECHAT_PROFILE);
-					});
-				break;
-				case STATE_GET_WECHAT_PROFILE:
-
-					userWechatModel
-					.findOne({user:userId})
-					.exec(function(err,luw){
-						latestUserWechat = luw;
-						stateMachine(err,STATE_BUILD_FULL_PROFILE);
-					});
-				break;
-				case STATE_BUILD_FULL_PROFILE:
-					latestFullProfile = new fullProfile(latestUser,latestUserWechat);
-					stateMachine(null,STATE_SEND_RESPONSE);
-				break;
-				case STATE_SEND_RESPONSE:
-					res.send(util.wrapBody({profile:latestFullProfile}));
-				break;
-				default: 
-					console.log('Invalid State');
-					res.send(util.wrapBody('Internal Error','E'));
-			}
-		}
-	}
-
+	userRepository.findById(userId).then(function(user){
+		res.send(util.wrapBody({user:user}));
+	}).fail(function(err){
+		console.log(err);
+		res.send(util.wrapBody('Internal Error','E'));
+	});
 };
 
 exports.loginByEmail = function(req,res){
-	var email = req.body.email;
-	var password = req.body.password;
 
-	if (email === undefined || password === undefined) {
-		res.send(util.wrapBody('Invalid Parameter','E'));
-		return;
-	}
 
-	const STATE_VERIFY_USER = 1;
-	const STATE_CREATE_TOKEN = 2;
-	const STATE_SEND_RESPONSE = 0;
+	if(util.checkParam(req.body,['email','password'])){
+		var email = req.body.email;
+		var password = req.body.password;
+		var user = null;
 
-	var latestUser = null;
-	var authenticated = false;
-	var jwToken = null;
-
-	stateMachine(null,STATE_VERIFY_USER);
-
-	function stateMachine(err,toState){
-
-		if (err) {
-			console.log('state:',toState);
-			console.log('error:',err);
-			res.send(util.wrapBody('Internal Error','E'));
-		} else {
-			switch(toState){
-				case STATE_VERIFY_USER:
-
-					userModel
-					.findOneAndUpdate({
-						email:email,
-						password:encryptPassword(password)
-					},{
-						latestLoginDate:new Date()
-					},{
-						new:true
-					}).exec(function(err,lu){
-						latestUser = lu;
-						stateMachine(err,STATE_CREATE_TOKEN);
-					});
-				break;
-				case STATE_CREATE_TOKEN:
-					if (latestUser == null) {
-						stateMachine(null,STATE_SEND_RESPONSE);
-					}else{
-						authenticator.create(latestUser._id,function(err,jt){
-								jwToken = jt;
-								authenticated = true;
-								stateMachine(err,STATE_SEND_RESPONSE);
-						});
-					}
-				break;
-				case STATE_SEND_RESPONSE:
-					var user = new fullProfile(latestUser,null);
-
-					var responseBody = {};
-					
-					if (authenticated) {
-						responseBody = {
-							token:jwToken,
-							user:user
-						};
-						res.send(util.wrapBody(responseBody));
-					}else{
-						responseBody = {
-							token:null
-						};
-						res.send(util.wrapBody(responseBody));
-					}
-					
-				break;
-				default:
-					console.log('Invalid State');
-					res.send(util.wrapBody('Internal Error','E'));
+		userRepository.update({
+			email:email,
+			password:encryptPassword(password)
+		},{
+			latestLoginDate:new Date()
+		}).then(function createToken(newUser){
+			if (!newUser) {
+				return null;
+			}else{
+				user = newUser;
+				return authenticator.create(newUser._id);
 			}
-		}
+
+		}).then(function sendResponse(token){
+			res.setHeader('set-token',token);
+			var responseBody = {
+				token:token,
+				user:user
+			};
+			res.send(util.wrapBody(responseBody));
+		}).fail(function(err){
+			console.log(err);
+			res.send(util.wrapBody('Internal Error','E'));
+		});
+	}else{
+		res.send(util.wrapBody('Invalid Parameter','E'));
 	}
+
 
 };
 
@@ -341,591 +135,256 @@ exports.addTestUser = function(req,res){
 		}
 	});
 
-	var newUser = new userModel();
+	var newUser = {};
 	newUser.email = req.body.email;
 	newUser.password = encryptPassword('zaq12wsx');
 
-	newUser
-	.save(function(err,lu){
-		if (err) {
-			console.log(err);
-			res.send('Fail');
-		}else{
-			var newRegistration = new registrationModel();
-			newRegistration.user = lu._id;
-			newRegistration.activateCode = stringHelper.randomString(4,['lower','digit']);
-			newRegistration.isActivated = true;
+	userRepository.create(newUser).then(function(lu){
 
-			newRegistration
-			.save(function(err,lr){
-				if (err) {
-					console.log(err);
-					res.send('Fail');
-				}else{
-					res.send('OK');
-				}
-			});
-		}
+		var newRegistration = {
+			user: lu._id,
+			activateCode:stringHelper.randomString(4,['lower','digit']),
+			isActivated:true
+		};
+
+		return registrationRepository.create(newRegistration);
 		
+	}).then(function(registration){
+		res.send('OK');
+	}).fail(function(err){
+		res.send(err);
 	});
 };
 
-exports.createUser = function(req,res){
-	console.log('inside createUser',req.body);
+exports.create = function(req,res){
+	if (!util.checkParam(req.body,['email','password'])) {
+		res.send(util.wrapBody('Invalid Parameter','E'));
+	}else{
+		var email = req.body.email;
+		var password = req.body.password;
+		var latestUser = null;
 
-	util.checkParam(req.body,['email','password'],function(err){
-		if (err) {
-			res.send(util.wrapBody('Invalid Parameter','E'));
-			return;
-		}
-	});
+		userRepository.count({
+			email:email
+		}).then(function createUser(exist){
+			if (exist > 0) {
+				throw new Error('Email exist');
+			}else{
+				var user = {
+					email:email,
+					password:encryptPassword(password)
+				};
 
-	var email = req.body.email;
-	var password = req.body.password;
-
-	const STATE_CHECK_USER_EXIST = 1;
-	const STATE_CREATE_USER = 2;
-	const STATE_CREATE_REGISTRATION = 3;
-	const STATE_SEND_ACTIVATE_EMAIL = 4;
-	const STATE_CREATE_TOKEN = 5;
-	const STATE_SEND_RESPONSE = 0;
-
-	var latestUser = null;
-	var isUserExist = 0;
-	var latestRegistration = null;
-	var jwToken = null;
-
-	stateMachine(null,STATE_CHECK_USER_EXIST);
-
-	function stateMachine(err,toState){
-		console.log('current state:',toState);
-
-		if (err) {
-			console.log('state:',toState);
-			console.log('error:',err);
-			res.send(util.wrapBody('Internal Error','E'));
-		} else {
-			switch(toState){
-				case STATE_CHECK_USER_EXIST:
-
-					userModel
-					.find({email:email})
-					.count()
-					.exec(function(err,result){
-						isUserExist = result;
-						stateMachine(err,STATE_CREATE_USER);
-					});
-				break;
-				case STATE_CREATE_USER:
-					if (isUserExist > 0) {
-						stateMachine(null,STATE_SEND_RESPONSE);
-					}else{
-
-						console.log('password',password);
-
-						var newUser = new userModel();
-						newUser.email = email;
-						newUser.password = encryptPassword(password);
-
-						newUser
-						.save(function(err,lu){
-							latestUser = lu;
-							stateMachine(err,STATE_CREATE_REGISTRATION);
-						});
-					}
-
-				break;
-				case STATE_CREATE_REGISTRATION:
-					var newRegistration = new registrationModel();
-					newRegistration.user = latestUser._id;
-					newRegistration.activateCode = stringHelper.randomString(4,['lower','digit']);
-
-					newRegistration
-					.save(function(err,lr){
-						latestRegistration = lr;
-						stateMachine(err,STATE_SEND_ACTIVATE_EMAIL);
-					});
-				break;
-				case STATE_SEND_ACTIVATE_EMAIL:
-					mailService.sendActivateCode(email,latestRegistration.activateCode,function(err){
-						stateMachine(err,STATE_CREATE_TOKEN);
-					});
-				break;
-				case STATE_CREATE_TOKEN:
-					authenticator.create(latestUser._id,function(err,jt){
-						jwToken = jt;
-						stateMachine(err,STATE_SEND_RESPONSE);
-					});
-				break;
-				case STATE_SEND_RESPONSE:
-					if (isUserExist > 0) {
-						res.send(util.wrapBody({token:null,msg:"Email is used"}));
-					}else{
-						res.send(util.wrapBody({token:jwToken}));
-					}
-				break;
-				default:
-					console.log('Invalid State');
-					res.send(util.wrapBody('Internal Error','E'));
+				return userRepository.create(user);
 			}
-		}
+		}).then(function createRegistration(user){
+			latestUser = user;
+			var registration = {
+				user:user._id,
+				activateCode:stringHelper.randomString(4,['lower','digit'])
+			};
+
+			return registrationRepository.create(registration);
+		}).then(function sendEmail(registration){
+			var deferred = q.defer();
+
+			mailService.sendActivateCode(email,registration.activateCode,function(err){
+				if (err) {
+					deferred.reject(err);
+				}else{
+					deferred.resolve(registration);
+				}
+			});
+
+			return deferred.promise;
+		}).then(function createToken(){
+			return authenticator.create(latestUser._id);
+		}).then(function sendResponse(token){
+			res.setHeader('set-token',token);
+			delete user.password;
+			res.send(util.wrapBody({user:user}));
+		}).fail(function(err){
+			console.log(err);
+			res.send(util.wrapBody('Internal Error','E'));
+		});
 	}
-}
+};
+
 
 exports.checkEmailActivated = function(req,res){
 	var userId = req.token.userId;
 
-	if (userId == undefined) {
-		res.send(util.wrapBody('Invalid Parameter','E'));
-		return;
-	}
-
-	const STATE_CHECK_ACTIVATED = 1;
-	const STATE_SEND_RESPONSE = 0;
-
-	var latestRegistration = null;
-
-	stateMachine(null,STATE_CHECK_ACTIVATED);
-
-	function stateMachine(err,toState){
-		console.log('state',toState);
-
-		if (err) {
-			res.send(util.wrapBody('Internal Error','E'));
-
-		}else{
-			switch(toState){
-				case STATE_CHECK_ACTIVATED:
-					registrationModel
-					.findOne({user:userId})
-					.exec(function(err,lr){
-						latestRegistration = lr;
-						stateMachine(err,STATE_SEND_RESPONSE);
-					})
-				break;
-				case STATE_SEND_RESPONSE:
-					res.send(util.wrapBody({isActivated:latestRegistration.isActivated}));
-				break;
-				default:
-					console.log('Invalid State');
-					res.send(util.wrapBody('Internal Error','E'));
-			}
-		}
-	}
-}
+	registrationRepository.findOne({
+		user:userId
+	}).then(function(registration){
+		res.send(util.wrapBody({
+			isActivated:registration.isActivated
+		}));
+	}).fail(function(err){
+		console.log(err);
+		res.send(util.wrapBody('Internal Error','E'));
+	});
+};
 
 exports.activateEmail = function(req,res){
-	var activateCode = req.body.activateCode;
-	var userId = req.token.userId;
-
-	if (userId == undefined || activateCode == undefined) {
+	if (!util.checkParam(req.body,['activateCode'])) {
 		res.send(util.wrapBody('Invalid Parameter','E'));
-		return;
-	}
+	}else{
+		var activateCode = req.body.activateCode;
+		var userId = req.token.userId;
 
-	const STATE_ACTIVATE_USER = 1;
-	const STATE_SEND_RESPONSE = 0;
-
-	var latestRegistration = null;
-
-	stateMachine(null,STATE_ACTIVATE_USER);
-
-	function stateMachine(err,toState){
-		console.log('state',toState);
-
-		if (err) {
-			console.log('error:',err);
-			res.send(util.wrapBody('Internal Error','E'));
-
-		}else{
-			switch(toState){
-				case STATE_ACTIVATE_USER:
-					registrationModel
-					.findOneAndUpdate({
-						user:userId,
-						activateCode:activateCode
-					},{
-						isActivated:true
-					},{
-						new:true
-					},function(err,lr){
-						latestRegistration = lr;
-						console.log('lr',lr);
-						stateMachine(err,STATE_SEND_RESPONSE);
-					})
-
-				break;
-				case STATE_SEND_RESPONSE:
-					if (latestRegistration != null && latestRegistration.isActivated) {
-						res.send(util.wrapBody({activated:true}));
-					}else{
-						res.send(util.wrapBody({activated:false}));
-					}
-				break;
-				default:
-					console.log('Invalid State');
-					res.send(util.wrapBody('Internal Error','E'));
+		registrationRepository.update({
+			user:userId,
+			activateCode:activateCode
+		},{
+			isActivated:true
+		}).then(function(registration){
+			if (!!registration&&registration.isActivated) {
+				res.send(util.wrapBody({success:true}));
+			}else{
+				res.send(util.wrapBody({success:false}));	
 			}
-		}
+		}).fail(function(err){
+			console.log(err);
+			res.send(util.wrapBody('Internal Error','E'));
+		});
 	}
-}
 
-exports.updateProfile = function(req,res){
-	var profile = req.body.profile;
+};
+
+exports.update = function(req,res){
+
+	var updates = req.body;
 	var userId = req.token.userId;
-
-	if (userId === undefined || profile === undefined) {
-		res.send(util.wrapBody('Invalid Parameter','E'));
-		return;
-	}
-
-	const STATE_CHECK_ACTIVATED = 1;
-	const STATE_UPDATE_USER = 2;
-	const STATE_SEND_RESPONSE = 0;
 
 	var latestRegistration = null;
 	var latestUser = null;
 
-	stateMachine(null,STATE_CHECK_ACTIVATED);
+	registrationRepository.findOne({
+		user:userId
+	}).then(function updateUser(registration){
+		if (!!registration&&registration.isActivated) {
+			if ('createdDate' in updates) delete updates.createdDate;
+			if ('email' in updates) delete updates.email;
+			if ('password' in updates) delete updates.password;
+			if ('wechatOpenId' in updates) delete updates.wechatOpenId;
+			if ('wechatUnionId' in updates) delete updates.wechatUnionId;
 
-	function stateMachine(err,toState){
-		console.log('state',toState);
-
-		if (err) {
-			console.log('error:',err);
-			res.send(util.wrapBody('Internal Error','E'));
-
+			return user.updateById(userId,updates);
 		}else{
-			switch(toState){
-				case STATE_CHECK_ACTIVATED:
-					registrationModel
-					.findOne({user:userId})
-					.exec(function(err,lr){
-						latestRegistration = lr;
-						stateMachine(err,STATE_UPDATE_USER);
-					});
-				break;
-				case STATE_UPDATE_USER:
-					if (latestRegistration != null && latestRegistration.isActivated) {
-						userModel
-						.findOneAndUpdate({
-							_id:userId
-						},{
-							nickname:profile.nickname
-						},{
-							upsert:false,
-							new:true
-						},function(err,lu){
-							latestUser = lu;
-							stateMachine(err,STATE_SEND_RESPONSE);
-						});
-					}else{
-						stateMachine(null,STATE_SEND_RESPONSE);
-					}
-
-				break;
-				case STATE_SEND_RESPONSE:
-					if (!latestRegistration.isActivated) {
-						res.send(util.wrapBody('Not activated','E'));
-					}else if (latestUser != null) {
-						res.send(util.wrapBody({isSuccessful:true}));
-					}else{
-						res.send(util.wrapBody({isSuccessful:false}));
-					}
-				break;
-				default:
-					console.log('Invalid State');
-					res.send(util.wrapBody('Internal Error','E'));
-			}
+			res.send(util.wrapBody('Not activated','E'));
 		}
-	}
-}
+	}).then(function sendResponse(user){
+		res.send(util.wrapBody({user:user}));
+	}).fail(function(err){
+		console.log(err);
+		res.send(util.wrapBody('Internal Error','E'));
+	});
+};
 
 exports.wechatBinding = function(req,res){
-
-	var code = req.body.code;
-	var userId = req.token.userId
-
-	if (userId == undefined || code == undefined) {
+	if (!util.checkParam(req.body,['code'])) {
 		res.send(util.wrapBody('Invalid Parameter','E'));
-		return;
-	}
-	
-	//States declaration
-	const STATE_GET_TOKEN = 1;
-	const STATE_GET_USER_INFO = 2;
-	const STATE_UPDATE_USER_WECHAT = 3;
-	const STATE_SEND_RESPONSE = 0;
+	}else{
+		var code = req.body.code;
+		var userId = req.token.userId;
 
-	var accessToken = null;
-	var openId = null;
-	var userInfo = null;
-	var latestUserWechat = null;
+		var deferred = q.defer();
 
-	stateMachine(null,STATE_GET_TOKEN);
-
-	function stateMachine(err,toState){
-
-
-		if (err) {
-			console.log('state:',toState);
-			console.log('error:',err);
-			res.send(util.wrapBody('Internal Error','E'));
-		}else{
-			console.log('state',toState);
-			//console.log('argument',arguments[2]);
-
-			switch(toState){
-				case STATE_GET_TOKEN: 
-					//get accessToken&openID by code
-					wechat.getAccessToken(code,function(err,at,oi){
-						accessToken = at;
-						openId = oi;
-						stateMachine(err,STATE_GET_USER_INFO);
-					});
-				break;
-				case STATE_GET_USER_INFO:
-					//get user info from wechat
-					wechat.getUserInfo(accessToken,function(err,ui){
-						userInfo = ui;
-						stateMachine(err,STATE_CHECK_USER_EXIST);
-					});
-				break;
-				case STATE_UPDATE_USER_WECHAT:
-					//if the user-wechat exist
-					userWechatModel
-					.findOneAndUpdate({
-						user:userId
-					},userInfo,{
-						upsert:true,
-						new:true
-					})
-					.exec(function(err,luw){
-						latestUserWechat = luw;
-						stateMachine(err,STATE_UPDATE_USER);
-					});
-				break;
-				case STATE_SEND_RESPONSE:
-					if (latestUserWechat != null) {
-						res.send(util.wrapBody({isSuccessful:true}));
-					}else{
-						res.send(util.wrapBody({isSuccessful:false}));
-					}
-				break;
-				default:
-					console.log('Invalid State');
-					res.send(util.wrapBody('Internal Error','E'));
+		wechat.getAccessToken(code,function(err,at,openId){
+			if (err) {
+				deferred.reject(err);
+			}else{
+				deferred.resolve(openId);
 			}
-		}
+		});
+
+		deferred.promise.then(function getUserInfo(openId){
+			var deferred = q.defer();
+
+			wechat.getUserInfo(openId,function(err,ui){
+				if (err) {
+					deferred.reject(err);
+				}else{
+					deferred.resolve(openId);
+				}
+			});
+
+			return deferred.promise;
+		}).then(function updateUser(userInfo){
+			return userRepository.updateById(userId,{
+				wechatOpenId:userInfo.openId,
+				wechatUnionId:userInfo.unionID
+			});
+		}).then(function sendResponse(user){
+			res.send(util.wrapBody({user:user}));
+		}).fail(function(err){
+			console.log(err);
+			res.send(util.wrapBody('Internal Error','E'));
+		});
 	}
-}
+};
 
 exports.updatePassword = function(req,res){
 	var userId = req.token.userId;
-	var password = req.body.password;
+	
 
-	if (userId == undefined || password == undefined) {
+	if (util.checkParam(req.body,['oldPassword','newPassword'])) {
 		res.send(util.wrapBody('Invalid Parameter','E'));
-		return;
-	}
+	}else{
+		var oldPassword = req.body.oldPassword;
+		var newPassword = req.body.newPassword;
 
-	var latestUser = null;
-
-	var STATE_UPDATE_PASSWORD = 1;
-	var STATE_SEND_RESPONSE = 0;
-
-	stateMachine(null,STATE_UPDATE_PASSWORD);
-
-	function stateMachine(err,toState){
-		console.log('current state:',toState);
-
-		if (err) {
-			console.log('error:',err);
-			res.send(util.wrapBody('Internal Error','E'));
-		} else {
-			switch(toState){
-				case STATE_UPDATE_PASSWORD:
-					userModel
-					.findOneAndUpdate({
-						_id:userId
-					},{
-						password:encryptPassword(password)
-					},{
-						upsert:false
-					},function(err,lu){
-						latestUser = lu;
-						stateMachine(err,STATE_SEND_RESPONSE);
-					})
-				break;
-				case STATE_SEND_RESPONSE:
-					if (latestUser != null) {
-						res.send(util.wrapBody({isSuccessful:true}));
-					}else{
-						res.send(util.wrapBody({isSuccessful:false}));
-					}
-				break;
-				default:
-					console.log('Invalid State');
-					res.send(util.wrapBody('Internal Error','E'));
+		userRepository.update({
+			_id:userId,
+			password:encryptPassword(oldPassword)
+		},{
+			password:encryptPassword(newPassword)
+		}).then(function(user){
+			if (!!user) {
+				res.send(util.wrapBody({user:user}));
+			}else{
+				res.send(util.wrapBody({user:null}));
 			}
-		}
+		}).fail(function(err){
+			console.log(err);
+			res.send(util.wrapBody('Internal Error','E'));
+		});
 	}
 
-}
+};
 
 exports.resetPassword = function(req,res){
-	var email = req.body.email
-
-	if (email == undefined) {
+	if (!util.checkParam(req.body,['email'])) {
 		res.send(util.wrapBody('Invalid Parameter','E'));
-		return;
-	}
+	}else{
+		var email = req.body.email;
+		var tempPassword = stringHelper.randomString(6,'all');
 
-	var latestUser = null;
-	var tempPassword = null;
+		userRepository.update({
+			email:email
+		},{
+			password:encryptPassword(tempPassword)
+		}).then(function sendEmail(user){
+			var deferred = q.defer();
+			mailService.sendTempPassword(latestUser.email,tempPassword,function(err){
+				if (err) {
+					deferred.reject(err);
+				}else{
+					deferred.resolve(user);
+				}
+			});
 
-	var STATE_UPDATE_PASSWORD = 1;
-	var STATE_SEND_EMAIL = 2;
-	var STATE_SEND_RESPONSE = 0;
-
-	stateMachine(null,STATE_UPDATE_PASSWORD);
-
-	function stateMachine(err,toState){
-		console.log('current state:',toState);
-
-		if (err) {
-			console.log('error:',err);
+			return deferred.promise;
+		}).then(function(user){
+			res.send(util.wrapBody({success:true}));
+		}).fail(function(err){
+			console.log(err);
 			res.send(util.wrapBody('Internal Error','E'));
-		} else {
-			switch(toState){
-				case STATE_UPDATE_PASSWORD:
-					tempPassword = stringHelper.randomString(6,'all');
-					userModel
-					.findOneAndUpdate({
-						email:email
-					},{
-						password:encryptPassword(tempPassword)
-					},{
-						upsert:false
-					},function(err,lu){
-						latestUser = lu;
-						stateMachine(err,STATE_SEND_EMAIL);
-					})
-				break;
-				case STATE_SEND_EMAIL:
-					mailService.sendTempPassword(latestUser.email,tempPassword,function(err){
-						stateMachine(err,STATE_SEND_RESPONSE);
-					})
-				break;
-				case STATE_SEND_RESPONSE:
-					if (latestUser != null) {
-						res.send(util.wrapBody({isSuccessful:true}));
-					}else{
-						res.send(util.wrapBody({isSuccessful:false}));
-					}
-				break;
-				default:
-					console.log('Invalid State');
-					res.send(util.wrapBody('Internal Error','E'));
-			}
-		}
+		});
 	}
-}
-
-exports.updateEmail = function(req,res){
-	console.log('inside updateEmail',req.body);
-
-	var email = req.body.email;
-	var password = req.body.password;
-	var userId = req.token.userId;
-
-	if (userId == undefined || password == undefined || email == undefined) {
-		res.send(util.wrapBody('Invalid Parameter','E'));
-		return;
-	}
-
-	const STATE_CHECK_EMAIL_USED = 1;
-	const STATE_UPDATE_USER = 2;
-	const STATE_UPDATE_REGISTRATION = 3;
-	const STATE_SEND_ACTIVATE_EMAIL = 4;
-	const STATE_SEND_RESPONSE = 0;
-
-	var isUserExist = 0;
-	var latestUser = null;
-	var latestRegistration = null;
-	var jwToken = null;
-
-	stateMachine(null,STATE_CHECK_EMAIL_USED);
-
-	function stateMachine(err,toState){
-		console.log('current state:',toState);
-
-		if (err) {
-			console.log('error:',err);
-			res.send(util.wrapBody('Internal Error','E'));
-		} else {
-			switch(toState){
-				case STATE_CHECK_EMAIL_USED:
-					userModel
-					.count({
-						email:email
-					},function(err,count){
-						isUserExist = count;
-						stateMachine(err,STATE_UPDATE_USER);
-					})
-				break;
-				case STATE_UPDATE_USER:
-					if (isUserExist > 0) {
-						stateMachine(err,STATE_SEND_RESPONSE);
-					}else{
-						userModel
-						.findOneAndUpdate({
-							_id:userId
-						},{
-							email:email
-						},function(err,lu){
-							latestUser = lu;
-							stateMachine(err,STATE_UPDATE_REGISTRATION);
-						});
-					}
-				break;
-				case STATE_UPDATE_REGISTRATION:
-					registrationModel
-					.findOneAndUpdate({
-						user:userId
-					},{
-						isActivated:false,
-						activateCode:stringHelper.randomString(4,'digit')
-					},{
-
-					},function(err,lr){
-						latestRegistration = lr;
-						stateMachine(err,STATE_SEND_ACTIVATE_EMAIL);
-					})
-				break;
-				case STATE_SEND_ACTIVATE_EMAIL:
-					mailService.sendActivateCode(email,latestRegistration.activateCode,function(err){
-						stateMachine(err,STATE_SEND_RESPONSE);
-					})
-				break;
-				case STATE_SEND_RESPONSE:
-					if (isUserExist > 0) {
-						res.send(util.wrapBody('Email is used','E'));
-					}else{
-						res.send(util.wrapBody({isSuccessful:true}));
-					}
-				break;
-				default:
-					console.log('Invalid State');
-					res.send(util.wrapBody('Internal Error','E'));
-			}
-		}
-	}
-}
-
-exports.getAllUsers = function(req,res){
-	res.send('OK');
-}
+				
+};
 
 function encryptPassword(rawPassword){
 
@@ -935,8 +394,4 @@ function encryptPassword(rawPassword){
 
 	return sha1.digest('hex');
 }
-
-
-
-
 
