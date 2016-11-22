@@ -90,7 +90,6 @@ exports.getUserProfile = function(req,res){
 
 exports.loginByEmail = function(req,res){
 
-
 	if(util.checkParam(req.body,['email','password'])){
 		var email = req.body.email;
 		var password = req.body.password;
@@ -123,8 +122,6 @@ exports.loginByEmail = function(req,res){
 	}else{
 		res.send(util.wrapBody('Invalid Parameter','E'));
 	}
-
-
 };
 
 exports.addTestUser = function(req,res){
