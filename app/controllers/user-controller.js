@@ -63,7 +63,7 @@ exports.loginByWechat = function(req,res){
 			});
 		}).then(function createToken(newUser){
 			user = newUser;
-			return authenticator.create(latestUser._id);
+			return authenticator.create(user._id);
 		}).then(function sendResponse(token){
 			res.setHeader('set-token',token);
 
