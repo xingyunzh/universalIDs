@@ -5,16 +5,27 @@ var logger = require('morgan');
 var mongoose = require('mongoose');
 var cookieParser = require('cookie-parser');
 var bodyParser = require('body-parser');
-
+var q = require('q');
 var apiRouter = require('./routes/api-router.js');
 
-var mongoDBUrl = "mongodb://xyzh:xyzh@127.0.0.1:27017/universalids";
-mongoose.connect(mongoDBUrl, function(err){
-  if (err) {
-    console.log("mongo db connect fail!" + err);
-  }else{
-    console.log("mongo db connect success!");
-  }
+var scr = require('./repositories/systemConfigRepository');
+
+
+mongoose.Promise = q.Promise;
+var envMongo = scr.getMongoEnv();
+var mongoURL = 'mongodb://' + envMongo.user + 
+        ":" + envMongo.password + 
+        '@' + envMongo.host + 
+        ':' + envMongo.port + 
+        '/' + envMongo.db;
+
+mongoose
+.connect(mongoURL)
+.then(function() {
+  console.log('Mongodb connected');
+})
+.catch(function(err) {
+  console.log("Could not connect mongodb with error message "+ err);
 });
 
 var app = express();

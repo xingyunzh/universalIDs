@@ -1,4 +1,4 @@
-var mailer = require('../../util/mailHelper.js');
+var mailer = require('../util/mailHelper.js');
 
 exports.sendTestingMail = function(address,callback) {
 	var mailOptions = {

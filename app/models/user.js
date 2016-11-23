@@ -20,7 +20,22 @@ var userSchema = Schema({
 		index:true
 	},
 
-	lastLoginDate:Date
+	gender:Number,
+
+	lastLoginDate:{
+		type:Date,
+		'default': new Date()
+	},
+
+	wechatOpenId:String,
+
+	wechatUnionId:String,
+
+	city:String,
+
+	country:String,
+
+	headImgUrl:String,
 });
 
 module.exports = mongoose.model('User',userSchema);
