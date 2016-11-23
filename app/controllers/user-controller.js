@@ -73,6 +73,9 @@ exports.loginByWechat = function(req,res){
 			};
 
 			res.send(util.wrapBody(responseBody));
+		}).fail(function(err){
+			console.log(err);
+			res.send(util.wrapBody('Internal Error','E'));
 		});
 	}
 };
