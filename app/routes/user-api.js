@@ -16,7 +16,7 @@ router.post('/login/email',userController.loginByEmail);
 
 router.post('/reset/password',userController.resetPassword);
 
-router.post('/api/profile/:id',userController.getUserProfile);
+router.get('/api/profile/:id',userController.getUserProfile);
 
 router.post('/api/activated/email',authenticator.authenticate,userController.checkEmailActivated);
 

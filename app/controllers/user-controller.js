@@ -7,6 +7,7 @@ var authenticator = require('../authenticate/authenticator');
 var userRepository = require('../repositories/userRepository');
 var registrationRepository = require('../repositories/registrationRepository');
 var mailService = require('../repositories/mailRepository');
+var imageRepository = require('../repositories/imageRepository')
 
 var q = require('q');
 
@@ -43,23 +44,30 @@ exports.loginByWechat = function(req,res){
 			return userRepository.findOne({
 				wechatUnionId:userInfo.unionID
 			}).then(function(oldUser){
-				if (oldUser) {
-					return userRepository.updateById(oldUser._id,{
-						lastLoginDate:new Date()
-					});
-				}else{
-					//save head img
-					var newUser = {
-						nickname:userInfo.nickname,
-						password:'',
-						gender:userInfo.sex,
-						city:userInfo.city,
-						country:userInfo.country,
-						headImgUrl:userInfo.headImgUrl
-					};
+				// if (oldUser) {
+				// 	return userRepository.updateById(oldUser._id,{
+				// 		lastLoginDate:new Date()
+				// 	});
+				// }else{
+					var imageName = stringHelper.randomString(10,['lower','digit']);
 
-					return userRepository.create(newUser);
-				}
+					return imageRepository
+					.getFromUrl(imageName,userInfo.headImgUrl)
+					.then(function(path){
+						return imageRepository.putToOSS(imageName,path);
+					}).then(function(res){
+						var newUser = {
+							nickname:userInfo.nickname,
+							password:'',
+							gender:userInfo.sex,
+							city:userInfo.city,
+							country:userInfo.country,
+							headImgUrl:imageName
+						};
+
+						return userRepository.create(newUser);
+					});
+				//}
 			});
 		}).then(function createToken(newUser){
 			user = newUser;
