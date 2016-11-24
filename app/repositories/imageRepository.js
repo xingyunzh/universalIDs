@@ -2,6 +2,7 @@ var OSS = require('ali-oss').Wrapper;
 var fs = require('fs');
 var scr = require('./systemConfigRepository');
 var q = require('q');
+var http = require('http');
 
 var imageStorePath = '/root/temp/images/';
 
@@ -23,20 +24,17 @@ exports.getFromOSS = function(name){
 
 exports.getFromUrl = function(name,url){
 	var deferred = q.defer();
+	var path = imageStorePath + name + '.jpeg';
 
-	http.request(url, function(response) {                                        
-		var data = new Stream();                                                    
-
-		response.on('data', function(chunk) {                                       
-		   data.push(chunk);                                                         
-		});                                                                         
-
-		response.on('end', function() {                                             
-		   fs.writeFileSync(imageStorePath + name + '.jpeg', data.read());    
-		   deferred.resolve(imageStorePath + name + '.jpeg');
-		});                                                  
-
-	}).end();
+	var file = fs.createWriteStream(path);
+	http.get(url, function(response) {
+  		response.pipe(file);
+  		file.on('finish',function(){
+  			deferred.resolve(path);
+  		});
+	}).on('err',function(err){
+		deferred.reject(err);
+	});
 
 	return deferred.promise;
 	
