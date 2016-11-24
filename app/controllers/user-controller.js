@@ -62,10 +62,11 @@ exports.loginByWechat = function(req,res){
 							gender:userInfo.sex,
 							city:userInfo.city,
 							country:userInfo.country,
-							headImgUrl:imageName
+							headImgUrl:res.url
 						};
 
 						return userRepository.create(newUser);
+						
 					});
 				}
 			});
