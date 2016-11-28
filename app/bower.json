@@ -1,0 +1,20 @@
+{
+  "name": "universalIDs",
+  "description": "",
+  "main": "",
+  "authors": [
+    "Ray"
+  ],
+  "private": true,
+  "ignore": [
+    "**/.*",
+    "node_modules",
+    "bower_components",
+    "public/lib",
+    "test",
+    "tests"
+  ],
+  "dependencies": {
+    "jquery": "^3.1.1"
+  }
+}
