@@ -1,0 +1,79 @@
+
+.title_content {
+	text-align: center;
+	background-color: #f4f4f4;
+	height: 164px;
+}
+
+.title_panel{
+	padding-top:26px;
+}
+
+.reg_content {
+	background-color: #f4f4f4;
+	height: 500px;
+}
+
+.reg_panel{
+	height: 500px;
+	width: 900px;
+	margin-right: auto;
+	margin-left: auto;
+	background-color: white;
+}
+
+.footer_content{
+	background-color: #f4f4f4;
+	height: 50px;
+}
+
+.footer_panel {
+	padding-top: 10px;
+	margin-right: auto;
+	margin-left: auto;
+	width: 900px;
+}
+
+.reg_title {
+	font-size: 22px;
+	padding: 40px 0 40px 60px;
+}
+
+.reg_form {
+	float: left;
+	line-height: 30px;
+	text-align: right;
+}
+
+.info_item {
+	display: block;
+	height: 40px;
+	width: 600px;
+}
+
+.info_label {
+	float:left;
+	width: 160px;
+	padding-right: 10px;
+}
+
+.info_input {
+	float: left;
+	width: 194px;
+}
+
+.n_input {
+	width: 194px;
+}
+
+.info_tips {
+	text-align: left;
+	float: left;
+	width: 220px;
+}
+
+.info_submit {
+	margin-left: 160px;
+	width: 40px;
+}
+

@@ -44,15 +44,15 @@ exports.loginByWechat = function(req,res){
 			return userRepository.findOne({
 				wechatUnionId:userInfo.unionID
 			}).then(function(oldUser){
-				// if (oldUser) {
-				// 	return userRepository.updateById(oldUser._id,{
-				// 		lastLoginDate:new Date()
-				// 	});
-				// }else{
+				if (oldUser) {
+					return userRepository.updateById(oldUser._id,{
+						lastLoginDate:new Date()
+					});
+				}else{
 					var imageName = stringHelper.randomString(10,['lower','digit']);
 
 					return imageRepository
-					.getFromUrl(imageName,userInfo.headImgUrl)
+					.getFromUrl(imageName,userInfo.headimgurl)
 					.then(function(path){
 						return imageRepository.putToOSS(imageName,path);
 					}).then(function(res){
@@ -62,12 +62,13 @@ exports.loginByWechat = function(req,res){
 							gender:userInfo.sex,
 							city:userInfo.city,
 							country:userInfo.country,
-							headImgUrl:imageName
+							headImgUrl:res.url
 						};
 
 						return userRepository.create(newUser);
+						
 					});
-				//}
+				}
 			});
 		}).then(function createToken(newUser){
 			user = newUser;
