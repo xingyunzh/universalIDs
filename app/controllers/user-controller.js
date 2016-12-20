@@ -45,6 +45,7 @@ exports.loginByWechat = function(req,res){
 			return userRepository.findOne({
 				wechatUnionId:userInfo.unionID
 			}).then(function(oldUser){
+				console.log('oldUser',oldUser);
 				if (!!oldUser) {
 					return userRepository.updateById(oldUser._id,{
 						lastLoginDate:new Date()
@@ -63,7 +64,9 @@ exports.loginByWechat = function(req,res){
 							gender:userInfo.sex,
 							city:userInfo.city,
 							country:userInfo.country,
-							headImgUrl:res.url
+							headImgUrl:res.url,
+							wechatOpenId:userInfo.openid,
+							wechatUnionId:userInfo.unionid
 						};
 
 						return userRepository.create(newUser);
