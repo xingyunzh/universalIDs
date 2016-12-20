@@ -41,10 +41,11 @@ exports.loginByWechat = function(req,res){
 
 			return d.promise;
 		}).then(function findOrCreateUser(userInfo){
+			console.log('userInfo',userInfo);
 			return userRepository.findOne({
 				wechatUnionId:userInfo.unionID
 			}).then(function(oldUser){
-				if (oldUser) {
+				if (!!oldUser) {
 					return userRepository.updateById(oldUser._id,{
 						lastLoginDate:new Date()
 					});
