@@ -7,7 +7,7 @@ var authenticator = require('../authenticate/authenticator');
 var userRepository = require('../repositories/userRepository');
 var registrationRepository = require('../repositories/registrationRepository');
 var mailService = require('../repositories/mailRepository');
-var imageRepository = require('../repositories/imageRepository')
+var imageRepository = require('../repositories/imageRepository');
 
 var q = require('q');
 
@@ -43,7 +43,7 @@ exports.loginByWechat = function(req,res){
 		}).then(function findOrCreateUser(userInfo){
 			console.log('userInfo',userInfo);
 			return userRepository.findOne({
-				wechatUnionId:userInfo.unionID
+				wechatUnionId:userInfo.unionid
 			}).then(function(oldUser){
 				console.log('oldUser',oldUser);
 				if (!!oldUser) {
