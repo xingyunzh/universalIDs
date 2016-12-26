@@ -56,23 +56,27 @@ function doSignup(){
 		};
 
 		$.ajax(settings).done(function(res){
+			$('#tipsSignup').text(Messages.success);
 			console.log('OK',res);
 		}).fail(function(err){
+			$('#tipsSignup').text(err);
 			console.log('err',err);
 		});
 	}
 }
 
 function isEmail() {
-	var email = $('#inputEmail').val();
+	return true;
+	// var email = $('#inputEmail').val();
 
- 	var regex = /^([a-zA-Z0-9_.+-])+\@(([a-zA-Z0-9-])+\.)+([a-zA-Z0-9]{2,4})+$/;
-  	return regex.test(email);
+ // 	var regex = /^([a-zA-Z0-9_.+-])+\@(([a-zA-Z0-9-])+\.)+([a-zA-Z0-9]{2,4})+$/;
+ //  	return regex.test(email);
 }
 
 var Messages = {
 	noPassword:'请输入密码',
 	noEmail:'请输入邮箱',
-	invalidEmail:'请输入正确的邮箱'
+	invalidEmail:'请输入正确的邮箱',
+	success:'注册成功'
 };
 
