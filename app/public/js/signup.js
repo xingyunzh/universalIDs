@@ -20,7 +20,7 @@ function checkEmail(){
 	if (!email) {
 		$('#tipsEmail').text(Messages.noEmail);
 		return false;
-	}else if(isEmail()){
+	}else if(!isEmail()){
 		$('#tipsEmail').text(Messages.invalidEmail);
 		return false;
 	}else{
@@ -66,11 +66,10 @@ function doSignup(){
 }
 
 function isEmail() {
-	return true;
-	// var email = $('#inputEmail').val();
+	var email = $('#inputEmail').val();
 
- // 	var regex = /^([a-zA-Z0-9_.+-])+\@(([a-zA-Z0-9-])+\.)+([a-zA-Z0-9]{2,4})+$/;
- //  	return regex.test(email);
+ 	var regex = /^([a-zA-Z0-9_.+-])+\@(([a-zA-Z0-9-])+\.)+([a-zA-Z0-9]{2,4})+$/;
+  	return regex.test(email);
 }
 
 var Messages = {
