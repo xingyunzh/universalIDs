@@ -214,8 +214,8 @@ exports.create = function(req,res){
 			return authenticator.create(latestUser._id);
 		}).then(function sendResponse(token){
 			res.setHeader('set-token',token);
-			delete user.password;
-			res.send(util.wrapBody({user:user}));
+			delete latestUser.password;
+			res.send(util.wrapBody({user:latestUser}));
 		}).fail(function(err){
 			console.log(err);
 			res.send(util.wrapBody('Internal Error','E'));
