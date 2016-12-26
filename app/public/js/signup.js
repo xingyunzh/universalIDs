@@ -24,6 +24,7 @@ function checkEmail(){
 		$('#tipsEmail').text(Messages.invalidEmail);
 		return false;
 	}else{
+		$('#tipsEmail').text("");
 		return true;
 	}
 	
@@ -36,6 +37,7 @@ function checkPassword(){
 		$('#tipsPassword').text(Messages.noPassword);
 		return false;
 	}else{
+		$('#tipsPassword').text("");
 		return true;
 	}
 }

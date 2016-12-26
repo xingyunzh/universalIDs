@@ -67,6 +67,7 @@
 }
 
 .info_tips {
+	color: red;
 	text-align: left;
 	float: left;
 	width: 220px;
@@ -75,5 +76,13 @@
 .info_submit {
 	margin-left: 160px;
 	width: 40px;
+}
+
+.info_submit_tips{
+	margin-left: 160px;
+	color: red;
+	text-align: left;
+	float: left;
+	width: 220px;
 }
 
