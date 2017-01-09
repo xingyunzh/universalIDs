@@ -23,9 +23,11 @@ exports.loginByWechat = function(req,res){
 		}
 
 		var code = req.body.code;
-		
+		var wechatAuthClient = null;
 		var user = null;
 		wechat.getClientByApp(app).then(function(client){
+			wechatAuthClient = client;
+			
 			var deferred = q.defer();
 
 			wechat.getAccessToken(client,code,function(err,at,oi){
@@ -42,7 +44,7 @@ exports.loginByWechat = function(req,res){
 		}).then(function getWechatInfo(openId){
 			var d = q.defer();
 
-			wechat.getUserInfo(openId,function(err,userInfo){
+			wechat.getUserInfo(wechatAuthClient,openId,function(err,userInfo){
 				if (err) {
 					d.reject(err);
 				}else{
