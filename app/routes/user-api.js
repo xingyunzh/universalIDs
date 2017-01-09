@@ -4,8 +4,6 @@ var router = express.Router();
 var userController = require("../controllers/userController");
 var authenticator = require('../authenticate/authenticator');
 
-router.post('/test/user',userController.addTestUser);
-
 router.post('/register',userController.create);
 
 router.post('/login/wechat',userController.loginByWechat);

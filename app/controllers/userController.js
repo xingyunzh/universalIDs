@@ -1,8 +1,9 @@
-var wechat = require('../util/wechat-auth');
+
 var util = require('../util/util');
 var crypto = require('crypto');
 var stringHelper = require('../util/shared/stringHelper');
 var authenticator = require('../authenticate/authenticator');
+var wechat = require('../authenticate/wechat-auth');
 
 var userRepository = require('../repositories/userRepository');
 var registrationRepository = require('../repositories/registrationRepository');
@@ -15,20 +16,30 @@ exports.loginByWechat = function(req,res){
 	if (!util.checkParam(req.body,['code'])) {
 		res.send(util.wrapBody('Invalid Parameter','E'));
 	}else{
+		var app = 'stars';
+
+		if ('app' in req.body) {
+			app = req.body.app;
+		}
+
 		var code = req.body.code;
-		var deferred = q.defer();
-
+		
 		var user = null;
+		wechat.getClientByApp(app).then(function(client){
+			var deferred = q.defer();
 
-		wechat.getAccessToken(code,function(err,at,oi){
-			if (err) {
-				deferred.reject(err);
-			}else{
-				deferred.resolve(oi);
-			}
-		});
+			wechat.getAccessToken(client,code,function(err,at,oi){
+				
+				if (err) {
+					deferred.reject(err);
+				}else{
+					deferred.resolve(oi);
+				}
 
-		deferred.promise.then(function getWechatInfo(openId){
+			});
+
+			return deferred.promise;
+		}).then(function getWechatInfo(openId){
 			var d = q.defer();
 
 			wechat.getUserInfo(openId,function(err,userInfo){
@@ -138,35 +149,6 @@ exports.loginByEmail = function(req,res){
 	}else{
 		res.send(util.wrapBody('Invalid Parameter','E'));
 	}
-};
-
-exports.addTestUser = function(req,res){
-	util.checkParam(req.body,['email'],function(err){
-		if (err) {
-			res.send(util.wrapBody('Invalid Parameter','E'));
-			return;
-		}
-	});
-
-	var newUser = {};
-	newUser.email = req.body.email;
-	newUser.password = encryptPassword('zaq12wsx');
-
-	userRepository.create(newUser).then(function(lu){
-
-		var newRegistration = {
-			user: lu._id,
-			activateCode:stringHelper.randomString(4,['lower','digit']),
-			isActivated:true
-		};
-
-		return registrationRepository.create(newRegistration);
-		
-	}).then(function(registration){
-		res.send('OK');
-	}).fail(function(err){
-		res.send(err);
-	});
 };
 
 exports.create = function(req,res){
@@ -293,49 +275,6 @@ exports.update = function(req,res){
 		console.log(err);
 		res.send(util.wrapBody('Internal Error','E'));
 	});
-};
-
-exports.wechatBinding = function(req,res){
-	if (!util.checkParam(req.body,['code'])) {
-		res.send(util.wrapBody('Invalid Parameter','E'));
-	}else{
-		var code = req.body.code;
-		var userId = req.token.userId;
-
-		var deferred = q.defer();
-
-		wechat.getAccessToken(code,function(err,at,openId){
-			if (err) {
-				deferred.reject(err);
-			}else{
-				deferred.resolve(openId);
-			}
-		});
-
-		deferred.promise.then(function getUserInfo(openId){
-			var deferred = q.defer();
-
-			wechat.getUserInfo(openId,function(err,ui){
-				if (err) {
-					deferred.reject(err);
-				}else{
-					deferred.resolve(openId);
-				}
-			});
-
-			return deferred.promise;
-		}).then(function updateUser(userInfo){
-			return userRepository.updateById(userId,{
-				wechatOpenId:userInfo.openId,
-				wechatUnionId:userInfo.unionID
-			});
-		}).then(function sendResponse(user){
-			res.send(util.wrapBody({user:user}));
-		}).fail(function(err){
-			console.log(err);
-			res.send(util.wrapBody('Internal Error','E'));
-		});
-	}
 };
 
 exports.updatePassword = function(req,res){

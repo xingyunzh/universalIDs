@@ -21,6 +21,21 @@ exports.getOSSConfig = function(){
     return deferred.promise;
 };
 
+exports.getWechatCredentials = function(){
+    var deferred = q.defer();
+    fs.readFile("/root/keys/uidKeys.json", "utf8", function(err, data){
+        if (err) {
+            deferred.reject(err);
+        }
+        else {
+            var wechat = JSON.parse(data).wechat;
+            deferred.resolve(wechat);
+        }
+    });
+
+    return deferred.promise;
+};
+
 exports.getMongoEnv = function(){
 
     var data = fs.readFileSync("/root/keys/uidKeys.json", "utf8");
