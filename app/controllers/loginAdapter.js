@@ -8,7 +8,6 @@ exports.viaWechat = function(req,res) {
 	var app = req.body.app;
 
 	var wechatAuthClient = null;
-	var user = null;
 
 	wechat.getClientByApp(app).then(function(client){
 		wechatAuthClient = client;

@@ -15,6 +15,7 @@ var imageRepository = require('../repositories/imageRepository');
 var q = require('q');
 
 exports.loginByWechat = function(req,res){
+
 	if (!util.checkParam(req.body,['code'])) {
 		res.send(util.wrapBody('Invalid Parameter','E'));
 	}else{
@@ -67,6 +68,8 @@ exports.loginByWechat = function(req,res){
 		wechatRequest.write(postData);
 		wechatRequest.end();
 
+		var user = {};
+
 		deferred.promise.then(function findOrCreateUser(userInfo){
 
 			//console.log('userInfo',userInfo);
@@ -75,7 +78,9 @@ exports.loginByWechat = function(req,res){
 			}).then(function(oldWechatUser){
 
 				if (!!oldWechatUser) {
-					return userRepository.updateById(oldWechatUser.user,{
+					user = oldWechatUser.user;
+
+					return userRepository.updateById(oldWechatUser.user._id,{
 						lastLoginDate:new Date()
 					});
 				}else{

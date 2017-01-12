@@ -11,5 +11,8 @@ exports.findByUserId = function(userId){
 };
 
 exports.findOne = function(conditions){
-	return Wechat.findOne(conditions).lean().exec();
+	return Wechat.findOne(conditions).populate({
+		path:'user',
+		select:'-password'
+	}).lean().exec();
 };
