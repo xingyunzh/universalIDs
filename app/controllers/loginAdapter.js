@@ -1,22 +1,35 @@
-
+var wechat = require('../authenticate/wechat-auth');
+var util = require('../util/util');
+var q = require('q');
 
 exports.viaWechat = function(req,res) {
-	var code = req.params.code;
+	
+	var code = req.body.code;
+	var app = req.body.app;
 
-	var deferred = q.defer();
+	var wechatAuthClient = null;
+	var user = null;
 
-	wechat.getAccessToken(code,function(err,at,oi){
-		if (err) {
-			deferred.reject(err);
-		}else{
-			deferred.resolve(oi);
-		}
-	});
+	wechat.getClientByApp(app).then(function(client){
+		wechatAuthClient = client;
+		
+		var deferred = q.defer();
 
-	deferred.promise.then(function getWechatInfo(openId){
+		wechat.getAccessToken(client,code,function(err,at,oi){
+			
+			if (err) {
+				deferred.reject(err);
+			}else{
+				deferred.resolve(oi);
+			}
+
+		});
+
+		return deferred.promise;
+	}).then(function getWechatInfo(openId){
 		var d = q.defer();
 
-		wechat.getUserInfo(openId,function(err,userInfo){
+		wechat.getUserInfo(wechatAuthClient,openId,function(err,userInfo){
 			if (err) {
 				d.reject(err);
 			}else{
@@ -26,6 +39,7 @@ exports.viaWechat = function(req,res) {
 
 		return d.promise;
 	}).then(function(userInfo){
+		res.send(util.wrapBody(userInfo));
 		
 	}).catch(function(err){
 		console.log(err);

@@ -1,6 +1,5 @@
 var OAuth = require('wechat-oauth');
 var systemConfigRepository = require('../repositories/systemConfigRepository');
-//var client = new OAuth('wx5ce7696222e79ca5', 'f9b1976f789b15a56adc6775353cecab');
 
 exports.getClientByApp = function(app){
 	return systemConfigRepository.getWechatCredentials().then(function(wechat){

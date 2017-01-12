@@ -9,3 +9,7 @@ exports.findByUserId = function(userId){
 		userId:userId
 	}).lean().exec();
 };
+
+exports.findOne = function(conditions){
+	return Wechat.findOne(conditions).lean().exec();
+};
