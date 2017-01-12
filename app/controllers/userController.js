@@ -73,7 +73,7 @@ exports.loginByWechat = function(req,res){
 			return userWechatRepository.findOne({
 				unionId:userInfo.unionid
 			}).then(function(oldWechatUser){
-				console.log('oldWechatUser',oldWechatUser);
+
 				if (!!oldWechatUser) {
 					return userRepository.updateById(oldWechatUser.user,{
 						lastLoginDate:new Date()

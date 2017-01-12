@@ -27,13 +27,13 @@ var userSchema = Schema({
 		'default': new Date()
 	},
 
-	wechatOpenId:String,
+	// wechatOpenId:String,
 
-	wechatUnionId:String,
+	// wechatUnionId:String,
 
-	city:String,
+	// city:String,
 
-	country:String,
+	// country:String,
 
 	headImgUrl:String,
 });
