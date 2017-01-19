@@ -12,6 +12,7 @@ exports.getClientByApp = function(app){
 exports.getAccessToken = function(client,code,callback){
 	client.getAccessToken(code, function (err, result) {
 		if (err) {
+			console.log('code:',code);
 			console.log('get access token error:',err);
 			callback(err);
 		}else{
