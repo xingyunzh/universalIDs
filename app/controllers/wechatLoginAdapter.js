@@ -5,7 +5,7 @@ var q = require('q');
 
 exports.viaWeApp = function(req,res){
 	var code = req.body.code;
-	var app = req.body.app;
+	var alias = req.body.app;
 
 	wechatAppRepository.getAppByAlias(alias).then(function(app){
 		var client = new OAuth(app.appId,app.secret);
@@ -34,7 +34,7 @@ exports.viaWeApp = function(req,res){
 exports.viaWechat = function(req,res) {
 
 	var code = req.body.code;
-	var app = req.body.app;
+	var alias = req.body.app;
 
 	wechatAppRepository.getAppByAlias(alias).then(function(app){
 		var client = new OAuth(app.appId,app.secret);
