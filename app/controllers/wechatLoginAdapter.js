@@ -8,7 +8,7 @@ exports.viaWeApp = function(req,res){
 	var alias = req.body.app;
 
 	wechatAppRepository.getAppByAlias(alias).then(function(app){
-		var client = new OAuth(app.appId,app.secret);
+		var client = new wechat(app.appId,app.secret);
 
 		var deferred = q.defer();
 
@@ -37,7 +37,7 @@ exports.viaWechat = function(req,res) {
 	var alias = req.body.app;
 
 	wechatAppRepository.getAppByAlias(alias).then(function(app){
-		var client = new OAuth(app.appId,app.secret);
+		var client = new wechat(app.appId,app.secret);
 
 		var deferred = q.defer();
 
