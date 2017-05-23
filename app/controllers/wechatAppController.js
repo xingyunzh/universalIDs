@@ -6,7 +6,7 @@ exports.create = function(req,res){
   if(util.checkParam(req.query,['name','appId','secret']) && query.code == 'yoroshiku'){
     var app = {
       alias:query.name,
-      appId:query.appid,
+      appId:query.appId,
       secret:query.secret
     }
 

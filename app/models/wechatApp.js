@@ -9,7 +9,7 @@ var wechatAppSchema = Schema({
 
   appId:String,
 
-  appSecret:String
+  secret:String
 });
 
 module.exports = mongoose.model('WechatApp',wechatAppSchema);
