@@ -167,7 +167,7 @@ var findOrCreateUser = function(userInfo,openId,alias){
 
 		if (!!oldWechatUser) {
 			//user = oldWechatUser.user;
-
+			console.log(oldWechatUser);
 			return userRepository.updateById(oldWechatUser.user._id,{
 				lastLoginDate:new Date()
 			});

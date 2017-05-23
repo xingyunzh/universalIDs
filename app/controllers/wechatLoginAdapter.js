@@ -43,8 +43,7 @@ exports.viaWechat = function(req,res) {
 		var deferred = q.defer();
 
 		client.getUserByCode(code,function(err,userInfo){
-			console.log(app);
-			console.log(userInfo);
+
 			if (err) {
 				deferred.reject(err);
 			}else{
