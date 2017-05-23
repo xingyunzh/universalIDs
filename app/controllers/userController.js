@@ -160,7 +160,10 @@ exports.storeUserByWeApp = function(req,res){
 
 var findOrCreateUser = function(userInfo,openId,alias){
 
-	//console.log('userInfo',userInfo);
+	console.log(userInfo);
+	console.log(openId);
+	console.log(alias);
+
 	return userWechatRepository.findOne({
 		unionId:userInfo.unionid
 	}).then(function(oldWechatUser){
