@@ -10,6 +10,10 @@ router.post('/login/wechat',userController.loginByWechat);
 
 router.post('/login/email',userController.loginByEmail);
 
+router.post('/login/weapp',userController.loginByWeApp);
+
+router.post('/login/weapp/2',userController.storeUserByWeApp);
+
 router.post('/reset/password',userController.resetPassword);
 
 router.get('/api/profile/:id',userController.getUserProfile);

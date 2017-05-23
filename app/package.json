@@ -18,6 +18,8 @@
     "nodemailer": "~2.6.0",
     "nodemailer-sendmail-transport": "1.0.0",
     "serve-favicon": "~2.3.0",
+    "urllib": "2.7.0",
+    "uuid": "^3.0.1",
     "wechat-oauth": "~1.1.1"
   }
 }

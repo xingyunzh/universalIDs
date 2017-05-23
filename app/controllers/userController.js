@@ -1,13 +1,15 @@
-
+var uuidv1 = require('uuid/v1')
 var util = require('../util/util');
 var http = require('http');
 var crypto = require('crypto');
 var stringHelper = require('../util/shared/stringHelper');
 var authenticator = require('../authenticate/authenticator');
-var wechat = require('../authenticate/wechat-auth');
+// var wechat = require('../authenticate/wechat-auth');
 
 var userRepository = require('../repositories/userRepository');
 var userWechatRepository = require('../repositories/userWechatRepository');
+var userWechatAppRepository = require('../repositories/userWechatAppRepository');
+var wechatAppRepository = require('../repositories/wechatAppRepository');
 var registrationRepository = require('../repositories/registrationRepository');
 var mailService = require('../repositories/mailRepository');
 var imageRepository = require('../repositories/imageRepository');
@@ -16,6 +18,61 @@ var q = require('q');
 
 exports.loginByWechat = function(req,res){
 
+	if (!util.checkParam(req.body,['code'])) {
+		res.send(util.wrapBody('Invalid Parameter','E'));
+	}else{
+		var app = 'stars';
+		var openId;
+
+		if ('app' in req.body) {
+			app = req.body.app;
+		}
+
+		var deferred = q.defer();
+
+		var postData = JSON.stringify({
+			code:req.body.code,
+			app:app
+		});
+
+		adapterRequest(deferred,postData,'wechat');
+
+		var u = {};
+
+		deferred.promise.then(function(userInfo){
+			openId = userInfo.openId;
+			return findOrCreateUser(userInfo);
+		})
+		.then(function(user){
+			u = user;
+			return  wechatAppRepository.getAppByAlias(alias).then(function(app){
+				return userWechatAppRepository.create({
+					openId:openId,
+					wechatApp:app._id,
+					userId:user._id
+				});
+			});
+		})
+		.then(function createToken(){
+			// u = user;
+			return authenticator.create(u._id);
+		}).then(function sendResponse(token){
+			res.setHeader('set-token',token);
+
+			var responseBody = {
+				token:token,
+				user:u
+			};
+
+			res.send(util.wrapBody(responseBody));
+		}).fail(function(err){
+			console.log(err);
+			res.send(util.wrapBody('Internal Error','E'));
+		});
+	}
+};
+
+exports.loginByWeApp = function(req,res){
 	if (!util.checkParam(req.body,['code'])) {
 		res.send(util.wrapBody('Invalid Parameter','E'));
 	}else{
@@ -31,110 +88,188 @@ exports.loginByWechat = function(req,res){
 			code:req.body.code,
 			app:app
 		});
-		//console.log('postData',postData);
-		var options = {
-			hostname: 'localhost',
-			  	port: 5566,
-			  	path: '/adapter/login/wechat',
-			  	method: 'POST',
-			  	headers: {
-			  	  'Content-Type': 'application/json'
-			  	}
-		};
 
-		var wechatRequest = http.request(options, function(res){
-			res.setEncoding('utf8');
-			
-			res.on('data', function(chunk){
-			  	var resJSON = JSON.parse(chunk);
-			  	if (resJSON.status == 'E'){
-			  		deferred.reject(new Error(resJSON.body));
-			  	}else{
-			  		deferred.resolve(resJSON.body);
-			  	}
-			  	
-			});
-			  
-			res.on('end', function(){
-			    //console.log('No more data in response.');
-			});
-		});
+		adapterRequest(deferred,postData,'weapp');
 
-		wechatRequest.on('error', function(e){
-		  	console.log('problem with request:',e.message);
-		  	deferred.reject(e.message);
-		});
+		var u = {};
+		var uid = uuidv1();
 
-		wechatRequest.write(postData);
-		wechatRequest.end();
+		deferred.promise.then(function(session){
 
-		var user = {};
-
-		deferred.promise.then(function findOrCreateUser(userInfo){
-
-			//console.log('userInfo',userInfo);
-			return userWechatRepository.findOne({
-				unionId:userInfo.unionid
-			}).then(function(oldWechatUser){
-
-				if (!!oldWechatUser) {
-					user = oldWechatUser.user;
-
-					return userRepository.updateById(oldWechatUser.user._id,{
-						lastLoginDate:new Date()
-					});
+			return wechatAppRepository.getAppByAlias(app).then(function(wechatApp){
+				return userWechatAppRepository.findByOpenIdAndApp(openId,wechatApp._id);
+			}).then(function(userWechatApp){
+				if(!!userWechatApp){
+					return userWechatApp.userWechat.user;
 				}else{
-					var imageName = stringHelper.randomString(10,['lower','digit']);
-
-					return imageRepository
-					.getFromUrl(imageName,userInfo.headimgurl)
-					.then(function(path){
-						return imageRepository.putToOSS(imageName,path);
-					}).then(function createUser(res){
-						var newUser = {
-							nickname:userInfo.nickname,
-							password:'',
-							gender:userInfo.sex,
-							headImgUrl:res.url
-						};
-
-						return userRepository.create(newUser);
-						
-					}).then(function createUserWechat(newUser){
-						user = newUser;
-
-						var newUserWechat = {
-							user:newUser._id,
-							nickname:userInfo.nickname,
-							sex:userInfo.sex,
-							city:userInfo.city,
-							country:userInfo.country,
-							headImgUrl:newUser.headImgUrl,
-							openId:userInfo.openid,
-							unionId:userInfo.unionid
-						};
-
-						return userWechatRepository.create(newUserWechat);
-					});
+					sessionKeyCache[uid] = session;
+					res.send(util.wrapBody({
+						shouldGetPrivateUserInfo:true,
+						sessionId:uid
+					}))
 				}
 			});
-		}).then(function createToken(){
+		}).then(function createToken(user){
+			u = user;
 			return authenticator.create(user._id);
 		}).then(function sendResponse(token){
 			res.setHeader('set-token',token);
 
 			var responseBody = {
 				token:token,
-				user:user
+				user:u
 			};
 
 			res.send(util.wrapBody(responseBody));
-		}).fail(function(err){
+		}).catch(function(err){
 			console.log(err);
 			res.send(util.wrapBody('Internal Error','E'));
 		});
 	}
 };
+
+var sessionKeyCache = {}
+
+exports.storeUserByWeApp = function(req,res){
+	if(!util.checkParam(req.body,['app','sessionId','encryptedData','iv'])){
+		res.send(util.wrapBody('Invalid Parameter','E'));
+	}else{
+		var u = {};
+
+		wechatAppRepository.getAppByAlias(app).then(function(wechatApp){
+			var session = sessionKeyCache[req.body.sessionId];
+			var pc = new WXBizDataCrypt(wechatApp.appId, session.session_key);
+			var data = pc.decryptData(req.body.encryptedData , req.body.iv);
+
+			if(!!data.unionId){
+				return findOrCreateUser(data)
+			}else{
+				throw new Error('Decrypt fail');
+			}
+
+		}).then(function createToken(user){
+			u = user;
+			return authenticator.create(user._id);
+		}).then(function sendResponse(token){
+			res.setHeader('set-token',token);
+
+			var responseBody = {
+				token:token,
+				user:u
+			};
+
+			res.send(util.wrapBody(responseBody));
+		}).catch(function(err){
+			console.log(err);
+			res.send(util.wrapBody('Internal Error','E'));
+		});
+
+	}
+
+
+
+
+}
+
+
+var findOrCreateUser = function(userInfo){
+
+	//console.log('userInfo',userInfo);
+	return userWechatRepository.findOne({
+		unionId:userInfo.unionid
+	}).then(function(oldWechatUser){
+
+		if (!!oldWechatUser) {
+			//user = oldWechatUser.user;
+
+			return userRepository.updateById(oldWechatUser.user._id,{
+				lastLoginDate:new Date()
+			});
+		}else{
+			var user = {};
+
+			var imageName = stringHelper.randomString(10,['lower','digit']);
+
+			return imageRepository
+			.getFromUrl(imageName,userInfo.headimgurl)
+			.then(function(path){
+				return imageRepository.putToOSS(imageName,path);
+			}).then(function createUser(res){
+				var newUser = {
+					nickname:userInfo.nickname,
+					password:'',
+					gender:userInfo.sex,
+					headImgUrl:res.url
+				};
+
+				return userRepository.create(newUser);
+
+			}).then(function createUserWechat(newUser){
+				user = newUser;
+
+				var newUserWechat = {
+					user:newUser._id,
+					nickname:userInfo.nickname,
+					sex:userInfo.sex,
+					city:userInfo.city,
+					country:userInfo.country,
+					headImgUrl:newUser.headImgUrl,
+					unionId:userInfo.unionid
+				};
+
+				return userWechatRepository.create(newUserWechat);
+			}).then(function(userWechat){
+				return  wechatAppRepository.getAppByAlias(alias).then(function(app){
+					return userWechatAppRepository.create({
+						openId:openId,
+						wechatApp:app._id,
+						userWechat:userWechat._id
+					});
+				});
+			}).then(function(){
+				return user;
+			});
+		}
+	});
+}
+
+function adapterRequest(deferred,postData,type){
+	var options = {
+		hostname: 'localhost',
+		  	port: 5566,
+		  	path: '/adapter/login/' + type,
+		  	method: 'POST',
+		  	headers: {
+		  	  'Content-Type': 'application/json'
+		  	}
+	};
+
+	var wechatRequest = http.request(options, function(res){
+		res.setEncoding('utf8');
+
+		res.on('data', function(chunk){
+		  	var resJSON = JSON.parse(chunk);
+		  	if (resJSON.status == 'E'){
+		  		deferred.reject(new Error(resJSON.body));
+		  	}else{
+		  		deferred.resolve(resJSON.body);
+		  	}
+
+		});
+
+		res.on('end', function(){
+		    //console.log('No more data in response.');
+		});
+	});
+
+	wechatRequest.on('error', function(e){
+	  	console.log('problem with request:',e.message);
+	  	deferred.reject(e.message);
+	});
+
+	wechatRequest.write(postData);
+	wechatRequest.end();
+}
 
 exports.getUserProfile = function(req,res){
 	var userId = req.params.id;
@@ -269,7 +404,7 @@ exports.activateEmail = function(req,res){
 			if (!!registration&&registration.isActivated) {
 				res.send(util.wrapBody({success:true}));
 			}else{
-				res.send(util.wrapBody({success:false}));	
+				res.send(util.wrapBody({success:false}));
 			}
 		}).fail(function(err){
 			console.log(err);
@@ -311,7 +446,7 @@ exports.update = function(req,res){
 
 exports.updatePassword = function(req,res){
 	var userId = req.token.userId;
-	
+
 
 	if (util.checkParam(req.body,['oldPassword','newPassword'])) {
 		res.send(util.wrapBody('Invalid Parameter','E'));
@@ -367,7 +502,7 @@ exports.resetPassword = function(req,res){
 			res.send(util.wrapBody('Internal Error','E'));
 		});
 	}
-				
+
 };
 
 function encryptPassword(rawPassword){
@@ -378,4 +513,3 @@ function encryptPassword(rawPassword){
 
 	return sha1.digest('hex');
 }
-

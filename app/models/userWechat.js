@@ -6,15 +6,12 @@ var userWechatSchema = Schema({
 
 	user:{
 		type:Schema.Types.ObjectId,
-        ref: 'User',
-        index:true
+    ref: 'User'
 	},
 
 	nickname:String,
 
 	sex:Number,
-
-	openId:String,
 
 	unionId:String,
 
@@ -26,5 +23,3 @@ var userWechatSchema = Schema({
 });
 
 module.exports = mongoose.model('UserWechat',userWechatSchema);
-
-
