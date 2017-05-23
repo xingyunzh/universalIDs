@@ -14,9 +14,9 @@ exports.viaWeApp = function(req,res){
 
 		client.getOpenIdByCode(code,function(err,session){
 			if (err) {
-				d.reject(err);
+				deferred.reject(err);
 			}else{
-				d.resolve(session);
+				deferred.resolve(session);
 			}
 		});
 
@@ -43,9 +43,9 @@ exports.viaWechat = function(req,res) {
 
 		client.getUserByCode(code,function(err,userInfo){
 			if (err) {
-				d.reject(err);
+				deferred.reject(err);
 			}else{
-				d.resolve(userInfo);
+				deferred.resolve(userInfo);
 			}
 		});
 
