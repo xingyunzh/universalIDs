@@ -3,6 +3,7 @@ var router = express.Router();
 
 var userAPI = require("./user-api");
 var thirdPartyLoginAPI = require('./thirdPartyLogin-api');
+var wechatAppAPI = require('./wechatApp-api');
 
 
 module.exports = router;
@@ -10,3 +11,5 @@ module.exports = router;
 router.use("/clduser", userAPI);
 
 router.use("/adapter",thirdPartyLoginAPI);
+
+router.use("/wca",wechatAppAPI);

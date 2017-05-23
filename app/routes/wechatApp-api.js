@@ -3,7 +3,7 @@ var router = express.Router();
 
 var wechatAppController = require("../controllers/wechatAppController");
 
-router.post('/create',wechatAppController.create);
+router.get('/create',wechatAppController.create);
 
 
 
