@@ -21,7 +21,7 @@ exports.viaWeApp = function(req,res){
 			}
 		});
 
-		return deferred;
+		return deferred.promise;
 
 	}).then(function(session){
 		res.send(util.wrapBody(session));
@@ -51,7 +51,7 @@ exports.viaWechat = function(req,res) {
 			}
 		});
 
-		return deferred;
+		return deferred.promise;
 
 	}).then(function(userInfo){
 		res.send(util.wrapBody(userInfo));

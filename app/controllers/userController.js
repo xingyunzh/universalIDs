@@ -158,7 +158,7 @@ exports.storeUserByWeApp = function(req,res){
 }
 
 
-function findOrCreateUser(userInfo,openId,alias){
+var findOrCreateUser = function(userInfo,openId,alias){
 
 	console.log(userInfo);
 	console.log(openId);
