@@ -41,20 +41,9 @@ exports.loginByWechat = function(req,res){
 
 		deferred.promise.then(function(userInfo){
 			openId = userInfo.openId;
-			return findOrCreateUser(userInfo);
-		})
-		.then(function(user){
+			return findOrCreateUser(userInfo,openId,app);
+		}).then(function createToken(user){
 			u = user;
-			return  wechatAppRepository.getAppByAlias(alias).then(function(app){
-				return userWechatAppRepository.create({
-					openId:openId,
-					wechatApp:app._id,
-					userId:user._id
-				});
-			});
-		})
-		.then(function createToken(){
-			// u = user;
 			return authenticator.create(u._id);
 		}).then(function sendResponse(token){
 			res.setHeader('set-token',token);
@@ -134,15 +123,15 @@ exports.storeUserByWeApp = function(req,res){
 	if(!util.checkParam(req.body,['app','sessionId','encryptedData','iv'])){
 		res.send(util.wrapBody('Invalid Parameter','E'));
 	}else{
-		var u = {};
+		var u;
 
-		wechatAppRepository.getAppByAlias(app).then(function(wechatApp){
+		wechatAppRepository.getAppByAlias(req.body.app).then(function(wechatApp){
 			var session = sessionKeyCache[req.body.sessionId];
 			var pc = new WXBizDataCrypt(wechatApp.appId, session.session_key);
-			var data = pc.decryptData(req.body.encryptedData , req.body.iv);
+			var data = pc.decryptData(req.body.encryptedData,req.body.iv);
 
 			if(!!data.unionId){
-				return findOrCreateUser(data)
+				return findOrCreateUser(data,session.openId,req.body.app);
 			}else{
 				throw new Error('Decrypt fail');
 			}
@@ -166,13 +155,10 @@ exports.storeUserByWeApp = function(req,res){
 
 	}
 
-
-
-
 }
 
 
-var findOrCreateUser = function(userInfo){
+var findOrCreateUser = function(userInfo,openId,alias){
 
 	//console.log('userInfo',userInfo);
 	return userWechatRepository.findOne({
@@ -219,6 +205,7 @@ var findOrCreateUser = function(userInfo){
 
 				return userWechatRepository.create(newUserWechat);
 			}).then(function(userWechat){
+
 				return  wechatAppRepository.getAppByAlias(alias).then(function(app){
 					return userWechatAppRepository.create({
 						openId:openId,
