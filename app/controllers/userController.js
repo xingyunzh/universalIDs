@@ -131,7 +131,7 @@ exports.registerUserByWeApp = function(req,res){
 			var data = pc.decryptData(req.body.encryptedData,req.body.iv);
 
 			if(!!data.unionId){
-				return findOrCreateUser(data,session.openId,req.body.app);
+				return findOrCreateUser(data,session.openid,req.body.app);
 			}else{
 				throw new Error('Decrypt fail');
 			}
