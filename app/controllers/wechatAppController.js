@@ -3,7 +3,7 @@ var util = require('../util/util');
 
 exports.create = function(req,res){
   var query = req.query;
-  if(util.checkParam(req.query,['name','appId','secret']) && query.code == 'yoroshiku'){
+  if(util.checkParam(req.query,['name','appId','secret','code']) && query.code == 'yoroshiku'){
     var app = {
       alias:query.name,
       appId:query.appId,

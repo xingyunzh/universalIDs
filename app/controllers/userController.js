@@ -159,22 +159,19 @@ exports.storeUserByWeApp = function(req,res){
 
 
 var findOrCreateUser = function(userInfo,openId,alias){
-
-	console.log(userInfo);
-	console.log(openId);
-	console.log(alias);
-
+	var user = {};
 	return userWechatRepository.findOne({
 		unionId:userInfo.unionid
-	}).then(function(oldWechatUser){
+	})
+	.then(function(oldWechatUser){
 
 		if (!!oldWechatUser) {
-			console.log(oldWechatUser);
 			return userRepository.updateById(oldWechatUser.user._id,{
 				lastLoginDate:new Date()
+			}).then(function(){
+				return oldWechatUser;
 			});
 		}else{
-			var user = {};
 
 			var imageName = stringHelper.randomString(10,['lower','digit']);
 
@@ -206,19 +203,22 @@ var findOrCreateUser = function(userInfo,openId,alias){
 				};
 
 				return userWechatRepository.create(newUserWechat);
-			}).then(function(userWechat){
-
-				return  wechatAppRepository.getAppByAlias(alias).then(function(app){
-					return userWechatAppRepository.create({
-						openId:openId,
-						wechatApp:app._id,
-						userWechat:userWechat._id
-					});
-				});
-			}).then(function(){
-				return user;
 			});
 		}
+	})
+	.then(function(userWechat){
+
+		return  wechatAppRepository.getAppByAlias(alias).then(function(app){
+			return userWechatAppRepository.update({
+				openId:openId,
+				wechatApp:app._id
+			},{
+				userWechat:userWechat._id
+			});
+		});
+	})
+	.then(function(){
+		return user;
 	});
 }
 
