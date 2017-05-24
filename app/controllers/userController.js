@@ -86,7 +86,7 @@ exports.loginByWeApp = function(req,res){
 		deferred.promise.then(function(session){
 
 			return wechatAppRepository.getAppByAlias(app).then(function(wechatApp){
-				return userWechatAppRepository.findByOpenIdAndApp(openId,wechatApp._id);
+				return userWechatAppRepository.findByOpenIdAndApp(session.openid,wechatApp._id);
 			}).then(function(userWechatApp){
 				if(!!userWechatApp){
 					return userWechatApp.userWechat.user;
