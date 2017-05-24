@@ -13,7 +13,7 @@ exports.findByOpenIdAndApp = function(openId,appId){
 };
 
 exports.update = function(conditions,data,options){
-	return userWechatApp.findOne(conditions,data,{
+	return userWechatApp.findOneAndUpdate(conditions,data,{
 		upsert:true,
 		new:true
 	}).populate({
