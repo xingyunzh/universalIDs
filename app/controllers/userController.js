@@ -4,6 +4,7 @@ var http = require('http');
 var crypto = require('crypto');
 var stringHelper = require('../util/shared/stringHelper');
 var authenticator = require('../authenticate/authenticator');
+var WXBizDataCrypt = require('../util/WXBizDataCrypt');
 // var wechat = require('../authenticate/wechat-auth');
 
 var userRepository = require('../repositories/userRepository');
