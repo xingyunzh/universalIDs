@@ -161,12 +161,22 @@ exports.registerUserByWeApp = function(req,res){
 var findOrCreateUser = function(userInfo,openId,alias){
 	console.log(userInfo);
 	var user = {};
+
+	var unionId;
+
+	if('unionId' in userInfo){
+		unionId = userInfo.unionId
+	}else if('unionid' in userInfo){
+		unionId = userInfo.unionid
+	}
+
 	return userWechatRepository.findOne({
-		unionId:userInfo.unionid
+		unionId:unionId
 	})
 	.then(function(oldWechatUser){
 
 		if (!!oldWechatUser) {
+			console.log(oldWechatUser);
 			return userRepository.updateById(oldWechatUser.user._id,{
 				lastLoginDate:new Date()
 			}).then(function(updatedUser){
