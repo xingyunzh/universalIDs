@@ -90,7 +90,7 @@ exports.loginByWeApp = function(req,res){
 				if(!!userWechatApp){
 					var u = userWechatApp.userWechat.user;
 
-					authenticator.create(u._id);
+					authenticator.create(u._id)
 					.then(function sendResponse(token){
 						res.setHeader('set-token',token);
 
