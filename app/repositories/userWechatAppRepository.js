@@ -5,7 +5,7 @@ exports.create = function(data) {
 	return userWechatApp.create(data);
 };
 
-exports.findByOpenIdAndAlias = function(openId,appId){
+exports.findByOpenIdAndApp = function(openId,appId){
 	return userWechatApp.findOne({
 		openId:openId,
 		wechatApp:appId
