@@ -80,7 +80,6 @@ exports.loginByWeApp = function(req,res){
 
 		adapterRequest(deferred,postData,'weapp');
 
-		var u = {};
 		var uid = uuidv1();
 
 		deferred.promise.then(function(session){
@@ -89,7 +88,19 @@ exports.loginByWeApp = function(req,res){
 				return userWechatAppRepository.findByOpenIdAndApp(session.openid,wechatApp._id);
 			}).then(function(userWechatApp){
 				if(!!userWechatApp){
-					return userWechatApp.userWechat.user;
+					var u = userWechatApp.userWechat.user;
+
+					authenticator.create(u._id);
+					.then(function sendResponse(token){
+						res.setHeader('set-token',token);
+
+						var responseBody = {
+							token:token,
+							user:u
+						};
+
+						res.send(util.wrapBody(responseBody));
+					})
 				}else{
 					sessionKeyCache[uid] = session;
 					res.send(util.wrapBody({
@@ -97,29 +108,17 @@ exports.loginByWeApp = function(req,res){
 						sessionId:uid
 					}))
 				}
+			}).catch(function(err){
+				console.log(err);
+				res.send(util.wrapBody('Internal Error','E'));
 			});
-		}).then(function createToken(user){
-			u = user;
-			return authenticator.create(user._id);
-		}).then(function sendResponse(token){
-			res.setHeader('set-token',token);
-
-			var responseBody = {
-				token:token,
-				user:u
-			};
-
-			res.send(util.wrapBody(responseBody));
-		}).catch(function(err){
-			console.log(err);
-			res.send(util.wrapBody('Internal Error','E'));
 		});
 	}
 };
 
 var sessionKeyCache = {}
 
-exports.storeUserByWeApp = function(req,res){
+exports.registerUserByWeApp = function(req,res){
 	if(!util.checkParam(req.body,['app','sessionId','encryptedData','iv'])){
 		res.send(util.wrapBody('Invalid Parameter','E'));
 	}else{

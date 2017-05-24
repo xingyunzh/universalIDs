@@ -12,7 +12,7 @@ router.post('/login/email',userController.loginByEmail);
 
 router.post('/login/weapp',userController.loginByWeApp);
 
-router.post('/login/weapp/2',userController.storeUserByWeApp);
+router.post('/login/weapp/register',userController.registerUserByWeApp);
 
 router.post('/reset/password',userController.resetPassword);
 
