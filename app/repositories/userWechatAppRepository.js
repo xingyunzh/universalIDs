@@ -9,22 +9,23 @@ exports.findByOpenIdAndApp = function(openId,appId){
 	return userWechatApp.findOne({
 		openId:openId,
 		wechatApp:appId
-	}).populate({
-		path:'wechatApp userWechat',
-		populate:{
-			path:'userWechat.user'
-		}
-	}).lean().exec();
+	})
+	// .populate('wechatApp userWechat')
+	.populate('userWechat')
+	.populate('userWechat.user')
+	.lean().exec();
 };
 
 exports.update = function(conditions,data,options){
 	return userWechatApp.findOneAndUpdate(conditions,data,{
 		upsert:true,
 		new:true
-	}).populate({
-		path:'wechatApp userWechat',
-		populate:{
-			path:'userWechat.user'
-		}
-	}).lean().exec();
+	})
+	// .populate({
+	// 	path:'wechatApp userWechat',
+	// 	populate:{
+	// 		path:'user'
+	// 	}
+	// })
+	.lean().exec();
 };
