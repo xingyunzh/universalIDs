@@ -10,9 +10,12 @@ exports.findByOpenIdAndApp = function(openId,appId){
 		openId:openId,
 		wechatApp:appId
 	})
-	// .populate('wechatApp userWechat')
-	.populate('userWechat')
-	.populate('userWechat.user')
+	.populate({
+		path:'userWechat',
+		populate:{
+			path:'user'
+		}
+	})
 	.lean().exec();
 };
 

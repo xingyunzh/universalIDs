@@ -89,6 +89,7 @@ exports.loginByWeApp = function(req,res){
 				return userWechatAppRepository.findByOpenIdAndApp(session.openid,wechatApp._id);
 			}).then(function(userWechatApp){
 				if(!!userWechatApp){
+
 					var u = userWechatApp.userWechat.user;
 
 					authenticator.create(u._id)
@@ -176,7 +177,7 @@ var findOrCreateUser = function(userInfo,openId,alias){
 	.then(function(oldWechatUser){
 
 		if (!!oldWechatUser) {
-			console.log(oldWechatUser);
+
 			return userRepository.updateById(oldWechatUser.user._id,{
 				lastLoginDate:new Date()
 			}).then(function(updatedUser){
