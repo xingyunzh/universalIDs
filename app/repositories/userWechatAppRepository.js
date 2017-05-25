@@ -12,7 +12,7 @@ exports.findByOpenIdAndApp = function(openId,appId){
 	}).populate({
 		path:'wechatApp userWechat',
 		populate:{
-			path:'user'
+			path:'userWechat.user'
 		}
 	}).lean().exec();
 };
@@ -24,7 +24,7 @@ exports.update = function(conditions,data,options){
 	}).populate({
 		path:'wechatApp userWechat',
 		populate:{
-			path:'user'
+			path:'userWechat.user'
 		}
 	}).lean().exec();
 };
