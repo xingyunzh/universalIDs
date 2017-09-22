@@ -118,41 +118,51 @@ exports.loginByWeApp = function(req,res){
 	}
 };
 
+//TODO use redis to instead
 var sessionKeyCache = {}
 
 exports.registerUserByWeApp = function(req,res){
+	var session = sessionKeyCache[req.body.sessionId];
+
 	if(!util.checkParam(req.body,['app','sessionId','encryptedData','iv'])){
 		res.send(util.wrapBody('Invalid Parameter','E'));
 	}else{
-		var u;
+		var session = sessionKeyCache[req.body.sessionId];
+		if('undefined' === typeof session){
+			res.send(util.wrapBody('Invalid Parameter','E'));
+		}else{
+			var u;
 
-		wechatAppRepository.getAppByAlias(req.body.app).then(function(wechatApp){
-			var session = sessionKeyCache[req.body.sessionId];
-			var pc = new WXBizDataCrypt(wechatApp.appId, session.session_key);
-			var data = pc.decryptData(req.body.encryptedData,req.body.iv);
+			wechatAppRepository.getAppByAlias(req.body.app).then(function(wechatApp){
 
-			if(!!data.unionId){
-				return findOrCreateUser(data,session.openid,req.body.app);
-			}else{
-				throw new Error('Decrypt fail');
-			}
+				var pc = new WXBizDataCrypt(wechatApp.appId, session.session_key);
+				var data = pc.decryptData(req.body.encryptedData,req.body.iv);
 
-		}).then(function createToken(user){
-			u = user;
-			return authenticator.create(user._id);
-		}).then(function sendResponse(token){
-			res.setHeader('set-token',token);
+				if(!!data.unionId){
+					return findOrCreateUser(data,session.openid,req.body.app);
+				}else{
+					throw new Error('Decrypt fail');
+				}
 
-			var responseBody = {
-				token:token,
-				user:u
-			};
+			}).then(function createToken(user){
+				u = user;
+				return authenticator.create(user._id);
+			}).then(function sendResponse(token){
+				res.setHeader('set-token',token);
 
-			res.send(util.wrapBody(responseBody));
-		}).catch(function(err){
-			console.log(err);
-			res.send(util.wrapBody('Internal Error','E'));
-		});
+				var responseBody = {
+					token:token,
+					user:u
+				};
+
+				res.send(util.wrapBody(responseBody));
+			}).catch(function(err){
+				console.log(err);
+				res.send(util.wrapBody('Internal Error','E'));
+			});
+
+		}
+
 
 	}
 
