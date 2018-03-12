@@ -9,6 +9,7 @@ var wechatAppAPI = require('./wechatApp-api');
 module.exports = router;
 
 router.use("/clduser", userAPI);
+router.use("/user", userAPI);
 
 router.use("/adapter",thirdPartyLoginAPI);
 
